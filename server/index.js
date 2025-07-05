@@ -1,136 +1,304 @@
-const express = require("express")
-const mongoose = require('mongoose')
-const cors = require("cors")
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
-const cookieParser = require('cookie-parser')
-const multer = require('multer')
-const path = require('path')
-const UserModel = require('./models/UserModel')
-const PostModel = require('./models/PostModel')
+require('dotenv').config();
 
-const app = express()
-app.use(express.json())
-app.use(cors({
-    origin: ["http://localhost:5173"],
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+const UserModel = require("./models/UserModel");
+const PostModel = require("./models/PostModel");
+const ContactModel = require("./models/ContactModel");
+
+const app = express();
+
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(express.json());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
-}))
-app.use(cookieParser())
-app.use(express.static('public'))
+    credentials: true,
+  })
+);
+app.use(cookieParser());
+app.use(express.static("public")); // Serve static files (e.g., images)
 
-mongoose.connect('mongodb://127.0.0.1:27017/blog');
+// MongoDB connection
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
+// JWT verification middleware
 const verifyUser = (req, res, next) => {
-    const token = req.cookies.token;
-    if(!token) {
-        return res.json("The token is missing")
-    } else {
-        jwt.verify(token, "jwt-secret-key", (err, decoded) => {
-            if(err) {
-                return res.json("The token is wrong")
-            } else {
-                req.email = decoded.email;
-                req.username = decoded.username;
-                next()
-            }
-        })
-    }
-}
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-app.get('/',verifyUser, (req, res) => {
-    return res.json({email: req.email, username: req.username})
-})
-
-
-app.post('/register', (req, res) => {
-    const {username, email, password} = req.body;
-    bcrypt.hash(password, 10)
-    .then(hash => {
-        UserModel.create({username, email, password: hash})
-        .then(user => res.json(user))
-        .catch(err => res.json(err))
-    }).catch(err => console.log(err))
-    
-})
-
-app.post('/login', (req, res) => {
-    const {email, password} = req.body;
-    console.log(email);
-    UserModel.findOne({email: email})
-    .then(user => {
-        if(user) {
-            bcrypt.compare(password, user.password, (err, response) => {
-                if(response) {
-                    const token = jwt.sign({email: user.email, username: user.username},
-                        "jwt-secret-key", {expiresIn: '1d'})
-                    res.cookie('token', token)
-                    return res.json("Success")
-                } else {
-                    return res.json("Password is incorrect");
-                }
-            })
-        } else {
-            return res.json("User not exist")
-        }
-    })
-})
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ error: "Invalid token" });
+    req.email = decoded.email;
+    req.username = decoded.username;
+    next();
+  });
+};
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'Public/Images')
-    },
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname))
+  destination: (req, file, cb) => cb(null, "public/images"),
+  filename: (req, file, cb) =>
+    cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname)),
+});
+const upload = multer({ storage });
+
+// Admin verification middleware
+const verifyAdmin = (req, res, next) => {
+  verifyUser(req, res, async () => {
+    try {
+      const user = await UserModel.findOne({ email: req.email });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      next();
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-})
+  });
+};
 
-const upload = multer({
-    storage: storage
-})
+// Admin dashboard stats
+app.get("/admin/stats", verifyAdmin, async (req, res) => {
+  try {
+    const [users, posts, contacts] = await Promise.all([
+      UserModel.countDocuments(),
+      PostModel.countDocuments(),
+      ContactModel.countDocuments()
+    ]);
+    
+    res.json({ users, posts, contacts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.post('/create', verifyUser, upload.single('file'), (req, res) => {
-    PostModel.create({title: req.body.title, 
-        description: req.body.description, 
-        file: req.file.filename, email: req.body.email})
-        .then(result => res.json("Success"))
-        .catch(err => res.json(err))
-} )
+// Get all users
+app.get("/admin/users", verifyAdmin, async (req, res) => {
+  try {
+    const users = await UserModel.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.get('/getposts', (req, res) => {
-    PostModel.find()
-    .then(posts => res.json(posts))
-    .catch(err => res.json(err))
-})
+// Get all posts
+app.get("/admin/posts", verifyAdmin, async (req, res) => {
+  try {
+    const posts = await PostModel.find();
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.get('/getpostbyid/:id', (req, res) => {
-    const id = req.params.id
-    PostModel.findById({_id: id})
-    .then(post => res.json(post))
-    .catch(err => console.log(err))
-})
+// Admin can delete any post
+app.delete("/admin/posts/:id", verifyAdmin, async (req, res) => {
+  try {
+    const post = await PostModel.findByIdAndDelete(req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    
+    if (post.file) {
+      const imagePath = path.join(__dirname, "public", "images", post.file);
+      fs.unlink(imagePath, (err) => {
+        if (err) console.log("Failed to delete image:", err.message);
+      });
+    }
+    
+    res.json("Post deleted successfully");
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.put('/editpost/:id', (req, res) => {
-    const id = req.params.id;
-    PostModel.findByIdAndUpdate(
-        {_id: id},{ 
-        title: req.body.title, 
-        description: req.body.description}
-        ).then(result => res.json("Success"))
-        .catch(err => res.json(err))
-})
+app.post("/register", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const hash = await bcrypt.hash(password, 10);
+    
+    // Make admin if email matches admin pattern
+    const isAdmin = email === process.env.ADMIN_EMAIL; // From env
+    
+    const user = await UserModel.create({ 
+      username, 
+      email, 
+      password: hash,
+      role: isAdmin ? "admin" : "user"
+    });
+    
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-app.delete('/deletepost/:id', (req, res) => {
-    PostModel.findByIdAndDelete({_id: req.params.id})
-    .then(result => res.json("Success"))
-    .catch(err => res.json(err))
-})
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await UserModel.findOne({ email });
+    if (!user) return res.status(400).json({ error: "User not exist" });
 
-app.get('/logout', (req, res) => {
-    res.clearCookie('token');
-    return res.json("Success")
-})
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ error: "Password is incorrect" });
 
-app.listen(3001, () => {
-    console.log("Server is Running")
-})
+    const token = jwt.sign(
+      { email: user.email, username: user.username, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+
+    return res.json({
+      status: "Success",
+      token,
+      user: { username: user.username, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/check-auth", verifyUser, async (req, res) => {
+  try {
+    const user = await UserModel.findOne({ email: req.email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    res.json({ 
+      email: user.email, 
+      username: user.username,
+      role: user.role 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const email = req.email;
+    const file = req.file?.filename || null;
+
+    await PostModel.create({ title, description, email, file });
+    res.json("Success");
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/getposts", async (req, res) => {
+  const posts = await PostModel.find();
+  res.json(posts);
+});
+
+app.get("/logout", (req, res) => {
+  res.clearCookie("token").json({ message: "Logged out" });
+});
+
+app.get("/getpostbyid/:id", async (req, res) => {
+  try {
+    const post = await PostModel.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    res.json(post);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/editpost/:id", verifyUser, upload.single("image"), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const post = await PostModel.findOne({ _id: req.params.id, email: req.email });
+
+    if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
+
+    // If new image uploaded, replace the old one
+    if (req.file) {
+      if (post.file) {
+        const oldPath = path.join(__dirname, "public", "images", post.file);
+        fs.unlink(oldPath, (err) => {
+          if (err) console.log("Failed to delete old image:", err.message);
+        });
+      }
+      post.file = req.file.filename;
+    }
+
+    post.title = title;
+    post.description = description;
+
+    await post.save();
+    res.json("Post updated successfully!");
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/deletepost/:id", verifyUser, async (req, res) => {
+  try {
+    const post = await PostModel.findOneAndDelete({
+      _id: req.params.id,
+      email: req.email,
+    });
+
+    if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
+
+    // Delete associated image
+    if (post.file) {
+      const imagePath = path.join(__dirname, "public", "images", post.file);
+      fs.unlink(imagePath, (err) => {
+        if (err) console.log("Failed to delete image:", err.message);
+      });
+    }
+
+    res.json("Success");
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/contact", async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    const newContact = await ContactModel.create({ name, email, message });
+
+    res.status(201).json({
+      success: true,
+      message: "Thank you for your message! We will get back to you soon.",
+      data: newContact,
+    });
+  } catch (error) {
+    console.error("Contact submission error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+app.get("/contacts", async (req, res) => {
+  try {
+    const contacts = await ContactModel.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: contacts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch contacts", error: error.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
