@@ -42,7 +42,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/stats", {
+      const res = await axios.get("https://blogwebsite-oyse.onrender.com/admin/stats", {
         headers: { Authorization: `Bearer ${token}` },
       })
       setStats(res.data)
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/users", {
+      const res = await axios.get("https://blogwebsite-oyse.onrender.com/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       })
       setUsers(res.data)
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/posts", {
+      const res = await axios.get("https://blogwebsite-oyse.onrender.com/admin/posts", {
         headers: { Authorization: `Bearer ${token}` },
       })
       setPosts(res.data)
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
         const token = localStorage.getItem("token")
-        await axios.delete(`http://localhost:3001/admin/posts/${postId}`, {
+        await axios.delete(`https://blogwebsite-oyse.onrender.com/admin/posts/${postId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         fetchPosts()

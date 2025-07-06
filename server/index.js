@@ -15,20 +15,32 @@ const PostModel = require("./models/PostModel");
 const ContactModel = require("./models/ContactModel");
 
 const app = express();
-
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
+app.use(express.static("public"));
+
+// ✅ Correct CORS setup for production
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://blog-website-7dl1.vercel.app"
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"]
   })
 );
-app.use(cookieParser());
-app.use(express.static("public")); // Serve static files (e.g., images)
+
 
 // MongoDB connection
 mongoose
@@ -39,7 +51,7 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// JWT verification middleware
+// JWT middleware
 const verifyUser = (req, res, next) => {
   const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "Unauthorized" });
@@ -59,7 +71,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Admin verification middleware
 const verifyAdmin = (req, res, next) => {
   verifyUser(req, res, async () => {
     try {
@@ -74,7 +85,7 @@ const verifyAdmin = (req, res, next) => {
   });
 };
 
-// Admin dashboard stats
+// Admin Routes
 app.get("/admin/stats", verifyAdmin, async (req, res) => {
   try {
     const [users, posts, contacts] = await Promise.all([
@@ -82,14 +93,12 @@ app.get("/admin/stats", verifyAdmin, async (req, res) => {
       PostModel.countDocuments(),
       ContactModel.countDocuments()
     ]);
-    
     res.json({ users, posts, contacts });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get all users
 app.get("/admin/users", verifyAdmin, async (req, res) => {
   try {
     const users = await UserModel.find().select('-password');
@@ -99,7 +108,6 @@ app.get("/admin/users", verifyAdmin, async (req, res) => {
   }
 });
 
-// Get all posts
 app.get("/admin/posts", verifyAdmin, async (req, res) => {
   try {
     const posts = await PostModel.find();
@@ -109,40 +117,34 @@ app.get("/admin/posts", verifyAdmin, async (req, res) => {
   }
 });
 
-// Admin can delete any post
 app.delete("/admin/posts/:id", verifyAdmin, async (req, res) => {
   try {
     const post = await PostModel.findByIdAndDelete(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
-    
+
     if (post.file) {
       const imagePath = path.join(__dirname, "public", "images", post.file);
       fs.unlink(imagePath, (err) => {
         if (err) console.log("Failed to delete image:", err.message);
       });
     }
-    
+
     res.json("Post deleted successfully");
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Auth Routes
 app.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const hash = await bcrypt.hash(password, 10);
-    
-    // Make admin if email matches admin pattern
-    const isAdmin = email === process.env.ADMIN_EMAIL; // From env
-    
+    const isAdmin = email === process.env.ADMIN_EMAIL;
     const user = await UserModel.create({ 
-      username, 
-      email, 
-      password: hash,
+      username, email, password: hash,
       role: isAdmin ? "admin" : "user"
     });
-    
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -180,24 +182,24 @@ app.get("/check-auth", verifyUser, async (req, res) => {
   try {
     const user = await UserModel.findOne({ email: req.email });
     if (!user) return res.status(404).json({ error: "User not found" });
-    
-    res.json({ 
-      email: user.email, 
-      username: user.username,
-      role: user.role 
-    });
+
+    res.json({ email: user.email, username: user.username, role: user.role });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+app.get("/logout", (req, res) => {
+  res.clearCookie("token").json({ message: "Logged out" });
+});
+
+// Post Routes
 app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
   try {
     const { title, description } = req.body;
-    const email = req.email;
     const file = req.file?.filename || null;
 
-    await PostModel.create({ title, description, email, file });
+    await PostModel.create({ title, description, email: req.email, file });
     res.json("Success");
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -207,10 +209,6 @@ app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
 app.get("/getposts", async (req, res) => {
   const posts = await PostModel.find();
   res.json(posts);
-});
-
-app.get("/logout", (req, res) => {
-  res.clearCookie("token").json({ message: "Logged out" });
 });
 
 app.get("/getpostbyid/:id", async (req, res) => {
@@ -230,7 +228,6 @@ app.put("/editpost/:id", verifyUser, upload.single("image"), async (req, res) =>
 
     if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
 
-    // If new image uploaded, replace the old one
     if (req.file) {
       if (post.file) {
         const oldPath = path.join(__dirname, "public", "images", post.file);
@@ -260,7 +257,6 @@ app.delete("/deletepost/:id", verifyUser, async (req, res) => {
 
     if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
 
-    // Delete associated image
     if (post.file) {
       const imagePath = path.join(__dirname, "public", "images", post.file);
       fs.unlink(imagePath, (err) => {
@@ -274,6 +270,7 @@ app.delete("/deletepost/:id", verifyUser, async (req, res) => {
   }
 });
 
+// Contact Routes
 app.post("/contact", async (req, res) => {
   try {
     const { name, email, message } = req.body;
@@ -281,11 +278,10 @@ app.post("/contact", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Thank you for your message! We will get back to you soon.",
+      message: "Thank you for your message!",
       data: newContact,
     });
   } catch (error) {
-    console.error("Contact submission error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });

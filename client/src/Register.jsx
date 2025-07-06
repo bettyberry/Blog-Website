@@ -25,7 +25,7 @@ function Register() {
     setError("");
 
     try {
-      await axios.post("http://localhost:3001/register", formData);
+      await axios.post("https://blogwebsite-oyse.onrender.com/register", formData);
       navigate("/login");
     } catch (err) {
       setError(
