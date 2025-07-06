@@ -14,6 +14,9 @@ function Register() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Use baseURL from environment variable with fallback
+  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
@@ -25,7 +28,7 @@ function Register() {
     setError("");
 
     try {
-      await axios.post("https://blogwebsite-oyse.onrender.com/register", formData);
+      await axios.post(`${baseURL}/register`, formData);
       navigate("/login");
     } catch (err) {
       setError(

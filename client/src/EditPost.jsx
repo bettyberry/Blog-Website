@@ -20,7 +20,7 @@ function EditPost() {
     async function fetchPost() {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`https://blogwebsite-oyse.onrender.com/getpostbyid/${id}`, {
+        const res = await axios.get(`http://localhost:3001/getpostbyid/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -37,7 +37,7 @@ function EditPost() {
         });
 
         if (res.data.image) {
-          setPreview(`https://blogwebsite-oyse.onrender.com/uploads/${res.data.image}`);
+          setPreview(`http://localhost:3001/uploads/${res.data.image}`);
         }
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load post");
@@ -62,7 +62,7 @@ function EditPost() {
         data.append("image", formData.image);
       }
 
-      await axios.put(`https://blogwebsite-oyse.onrender.com/editpost/${id}`, data, {
+      await axios.put(`http://localhost:3001/editpost/${id}`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

@@ -41,7 +41,7 @@ function CreatePost() {
       data.append("description", formData.description);
       if (formData.file) data.append("file", formData.file);
 
-      await axios.post("https://blogwebsite-oyse.onrender.com/create", data, {
+      await axios.post("http://localhost:3001/create", data, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

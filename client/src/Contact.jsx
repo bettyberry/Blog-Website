@@ -68,7 +68,7 @@ export default function ContactForm() {
       setErrors({});
 
       // Submit to backend
-      const response = await axios.post("https://blogwebsite-oyse.onrender.com/contact", formData);
+      const response = await axios.post("http://localhost:3001/contact", formData);
 
       setStatus({
         message: response.data.message,

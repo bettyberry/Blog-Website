@@ -9,7 +9,7 @@ function Home() {
 
   useEffect(() => {
     axios
-      .get("https://blogwebsite-oyse.onrender.com/getposts")
+      .get("http://localhost:3001/getposts")
       .then((posts) => {
         setPosts(posts.data)
         setLoading(false)
@@ -132,7 +132,7 @@ Share your recipes and stories with us!</p>
                 <Link to={`/post/${post._id}`} className="block">
                   <div className={`${index === 0 ? "h-96" : "h-72"} relative`}>
                     <img 
-                      src={`https://blogwebsite-oyse.onrender.com/Images/${post.file}`} 
+                      src={`http://localhost:3001/Images/${post.file}`} 
                       alt={post.title} 
                       className="w-full h-full object-cover rounded-t-xl"
                     />

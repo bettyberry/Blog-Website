@@ -21,7 +21,7 @@ function Login() {
     setError("");
 
     try {
-      const res = await axios.post("https://blogwebsite-oyse.onrender.com/login", formData);
+      const res = await axios.post("http://localhost:3001/login", formData);
       if (res.data.token && res.data.user) {
         localStorage.setItem("token", res.data.token);
         setUser(res.data.user);

@@ -10,7 +10,7 @@ function Navbar() {
 
   const handleLogout = async () => {
   try {
-    await axios.get("https://blogwebsite-oyse.onrender.com/logout", {
+    await axios.get("http://localhost:3001/logout", {
       withCredentials: true
     });
     localStorage.removeItem("token");

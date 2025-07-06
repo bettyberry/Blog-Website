@@ -26,7 +26,7 @@ function App() {
         setLoading(false);
         return;
       }
-      const res = await axios.get("https://blogwebsite-oyse.onrender.com/check-auth", {
+      const res = await axios.get("http://localhost:3001/check-auth", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser({ email: res.data.email, username: res.data.username });
@@ -40,7 +40,7 @@ function App() {
 
   const logout = async () => {
     try {
-      await axios.get("https://blogwebsite-oyse.onrender.com/logout");
+      await axios.get("http://localhost:3001/logout");
       localStorage.removeItem("token");
       setUser(null);
     } catch (err) {

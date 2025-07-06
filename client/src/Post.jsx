@@ -15,7 +15,7 @@ function Post() {
   useEffect(() => {
     async function fetchPost() {
       try {
-        const res = await axios.get(`https://blogwebsite-oyse.onrender.com/getpostbyid/${id}`);
+        const res = await axios.get(`http://localhost:3001/getpostbyid/${id}`);
         setPost(res.data);
       } catch {
         setError("Failed to load post");
@@ -31,7 +31,7 @@ function Post() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`https://blogwebsite-oyse.onrender.com/deletepost/${id}`, {
+      await axios.delete(`http://localhost:3001/deletepost/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Post deleted successfully");
@@ -53,7 +53,7 @@ function Post() {
       <p className="mb-6 whitespace-pre-line">{post.description}</p>
       {post.file && (
         <img
-          src={`https://blogwebsite-oyse.onrender.com/images/${post.file}`}
+          src={`http://localhost:3001/images/${post.file}`}
           alt={post.title}
           className="mb-6 max-w-full rounded"
         />
