@@ -14,6 +14,7 @@ function Register() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Use baseURL from environment variable with fallback
   const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   const handleInputChange = (e) => {
@@ -42,11 +43,15 @@ function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-800">✨ Join Our Community</h2>
+          <h2 className="text-3xl font-bold text-slate-800">
+            ✨ Join Our Community
+          </h2>
         </div>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-md text-center">{error}</div>
+          <div className="bg-red-100 text-red-700 p-4 rounded-md text-center">
+            {error}
+          </div>
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
@@ -121,7 +126,9 @@ function Register() {
         </form>
 
         <div className="text-center mt-8">
-          <p className="text-sm text-slate-600 mb-4">Already have an account?</p>
+          <p className="text-sm text-slate-600 mb-4">
+            Already have an account?
+          </p>
           <Link to="/login">
             <button className="w-full py-3 px-4 rounded-xl text-slate-800 bg-slate-100 hover:bg-slate-200 shadow">
               🔐 Sign In

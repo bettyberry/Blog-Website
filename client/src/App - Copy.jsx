@@ -7,31 +7,17 @@ import CreatePost from "./CreatePost";
 import Contact from "./Contact";
 import Post from "./Post";
 import EditPost from "./EditPost";
-import AdminDashboard from "./AdminDashboard";
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import AdminDashboard from "./AdminDashboard";
 
 export const userContext = createContext();
 export const useUserContext = () => useContext(userContext);
-
-// Get API base URL from env, fallback to localhost for dev
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-// AdminRoute component to restrict admin dashboard
-function AdminRoute({ children }) {
-  const { user } = useUserContext();
-
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "admin") return <Navigate to="/" replace />;
-
-  return children;
-}
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check auth status and fetch user info including role
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -40,15 +26,10 @@ function App() {
         setLoading(false);
         return;
       }
-      const res = await axios.get(`${API_URL}/check-auth`, {
+      const res = await axios.get("http://localhost:3001/check-auth", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Assume backend returns { email, username, role }
-      setUser({
-        email: res.data.email,
-        username: res.data.username,
-        role: res.data.role || "user", // default role fallback
-      });
+      setUser({ email: res.data.email, username: res.data.username });
     } catch {
       localStorage.removeItem("token");
       setUser(null);
@@ -57,10 +38,9 @@ function App() {
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
-      await axios.get(`${API_URL}/logout`);
+      await axios.get("http://localhost:3001/logout");
       localStorage.removeItem("token");
       setUser(null);
     } catch (err) {
@@ -89,33 +69,26 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route
               path="/register"
-              element={user ? <Navigate to="/" replace /> : <Register />}
+              element={user ? <Navigate to="/" /> : <Register />}
             />
             <Route
               path="/login"
-              element={user ? <Navigate to="/" replace /> : <Login />}
+              element={user ? <Navigate to="/" /> : <Login />}
             />
             <Route
               path="/create"
-              element={user ? <CreatePost /> : <Navigate to="/login" replace />}
+              element={user ? <CreatePost /> : <Navigate to="/login" />}
             />
             <Route path="/post/:id" element={<Post />} />
             <Route
               path="/editpost/:id"
-              element={user ? <EditPost /> : <Navigate to="/login" replace />}
+              element={user ? <EditPost /> : <Navigate to="/login" />}
             />
-            <Route path="/contact" element={<Contact />} />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              }
-            />
-            {/* Optional catch-all redirect for unknown routes */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+<Route path="/contact" element={<Contact />} />          
+<Route path="/admin" element={<AdminDashboard />} />
+
+</Routes>
+
         </main>
       </BrowserRouter>
     </userContext.Provider>

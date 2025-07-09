@@ -6,12 +6,9 @@ function Home() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Use base URL from env variable with fallback to localhost
-  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
   useEffect(() => {
     axios
-      .get(`${baseURL}/getposts`)
+      .get("http://localhost:3001/getposts")
       .then((res) => {
         setPosts(res.data);
         setLoading(false);
@@ -20,7 +17,7 @@ function Home() {
         console.error(err);
         setLoading(false);
       });
-  }, [baseURL]);
+  }, []);
 
   if (loading) {
     return (
@@ -134,7 +131,7 @@ function Home() {
                   <div className={`${index === 0 ? "h-96" : "h-72"} relative`}>
                     {post.file && (
                       <img
-                        src={`${baseURL}/images/${post.file}`}
+                        src={`http://localhost:3001/images/${post.file}`}
                         alt={post.title}
                         className="w-full h-full object-cover rounded-t-xl"
                         onError={e => { e.target.style.display = 'none'; }}

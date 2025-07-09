@@ -11,8 +11,6 @@ function CreatePost() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "file") {
@@ -43,7 +41,7 @@ function CreatePost() {
       data.append("description", formData.description);
       if (formData.file) data.append("file", formData.file);
 
-      await axios.post(`${baseURL}/create`, data, {
+      await axios.post("http://localhost:3001/create", data, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -60,10 +58,14 @@ function CreatePost() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-8">
       <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl">
-        <h2 className="text-3xl font-bold mb-6 text-center text-slate-800">✍️ Create New Post</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center text-slate-800">
+          ✍️ Create New Post
+        </h2>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4 text-center">{error}</div>
+          <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4 text-center">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">

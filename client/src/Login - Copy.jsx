@@ -10,13 +10,9 @@ function Login() {
   const navigate = useNavigate();
   const { setUser } = useUserContext();
 
-  // Use VITE_API_URL env variable with fallback
-  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (error) setError("");
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -25,7 +21,7 @@ function Login() {
     setError("");
 
     try {
-      const res = await axios.post(`${baseURL}/login`, formData);
+      const res = await axios.post("http://localhost:3001/login", formData);
       if (res.data.token && res.data.user) {
         localStorage.setItem("token", res.data.token);
         setUser(res.data.user);
@@ -63,7 +59,6 @@ function Login() {
             <input
               type="email"
               id="email"
-              name="email"
               required
               autoComplete="email"
               className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-slate-600 focus:border-slate-600"
@@ -80,7 +75,6 @@ function Login() {
             <input
               type="password"
               id="password"
-              name="password"
               required
               autoComplete="current-password"
               className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-slate-600 focus:border-slate-600"

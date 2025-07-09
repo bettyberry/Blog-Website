@@ -16,13 +16,11 @@ function EditPost() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
   useEffect(() => {
     async function fetchPost() {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${baseURL}/getpostbyid/${id}`, {
+        const res = await axios.get(`http://localhost:3001/getpostbyid/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -39,7 +37,7 @@ function EditPost() {
         });
 
         if (res.data.image) {
-          setPreview(`${baseURL}/uploads/${res.data.image}`);
+          setPreview(`http://localhost:3001/uploads/${res.data.image}`);
         }
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load post");
@@ -48,7 +46,7 @@ function EditPost() {
       }
     }
     fetchPost();
-  }, [id, navigate, user, baseURL]);
+  }, [id, navigate, user]);
 
   const updatePost = async (e) => {
     e.preventDefault();
@@ -64,7 +62,7 @@ function EditPost() {
         data.append("image", formData.image);
       }
 
-      await axios.put(`${baseURL}/editpost/${id}`, data, {
+      await axios.put(`http://localhost:3001/editpost/${id}`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

@@ -1,118 +1,118 @@
-import { useState, useEffect } from "react"
-import { useUserContext } from "./App"
-import axios from "axios"
-import { Link } from "react-router-dom"
+import { useState, useEffect } from "react";
+import { useUserContext } from "./App";
+import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   Card, CardHeader, CardFooter, CardTitle, CardAction,
   CardDescription, CardContent,
-} from "./components/ui/card"
+} from "./components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "./components/ui/table"
-import { Button } from "./components/ui/button"
-import { Badge } from "./components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar"
-import { Input } from "./components/ui/input"
-import { Label } from "./components/ui/label"
-import { Skeleton } from "./components/ui/skeleton"
+} from "./components/ui/table";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Skeleton } from "./components/ui/skeleton";
 import {
   Sheet, SheetContent, SheetDescription,
   SheetHeader, SheetTitle, SheetTrigger,
-} from "./components/ui/sheet"
+} from "./components/ui/sheet";
 
-// Import Recharts components
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from "recharts"
+} from "recharts";
+
+const API = import.meta.env.VITE_API_URL;
 
 export default function AdminDashboard() {
-  const { user } = useUserContext()
-  const [stats, setStats] = useState(null)
-  const [users, setUsers] = useState([])
-  const [posts, setPosts] = useState([])
-  const [activeTab, setActiveTab] = useState("dashboard")
-  const [loading, setLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const { user } = useUserContext();
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (user) fetchStats()
-  }, [user])
+    if (user) fetchStats();
+  }, [user]);
 
   const fetchStats = async () => {
     try {
-      setLoading(true)
-      const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/stats", {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      setStats(res.data)
+      });
+      setStats(res.data);
     } catch (err) {
-      console.error("Failed to fetch stats:", err)
+      console.error("Failed to fetch stats:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchUsers = async () => {
     try {
-      setLoading(true)
-      const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/users", {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      setUsers(res.data)
+      });
+      setUsers(res.data);
     } catch (err) {
-      console.error("Failed to fetch users:", err)
+      console.error("Failed to fetch users:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchPosts = async () => {
     try {
-      setLoading(true)
-      const token = localStorage.getItem("token")
-      const res = await axios.get("http://localhost:3001/admin/posts", {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/admin/posts`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      setPosts(res.data)
+      });
+      setPosts(res.data);
     } catch (err) {
-      console.error("Failed to fetch posts:", err)
+      console.error("Failed to fetch posts:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const deletePost = async (postId) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
-        const token = localStorage.getItem("token")
-        await axios.delete(`http://localhost:3001/admin/posts/${postId}`, {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API}/admin/posts/${postId}`, {
           headers: { Authorization: `Bearer ${token}` },
-        })
-        fetchPosts()
+        });
+        fetchPosts();
       } catch (err) {
-        console.error("Failed to delete post:", err)
+        console.error("Failed to delete post:", err);
       }
     }
-  }
+  };
 
   const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  );
 
   const filteredPosts = posts.filter(post =>
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (post.email?.username && post.email.username.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  );
 
-  // Data for bar chart in dashboard
   const chartData = stats ? [
     { name: "Users", count: stats.users },
     { name: "Posts", count: stats.posts },
     { name: "Contacts", count: stats.contacts },
-  ] : []
+  ] : [];
 
   if (!user || user.role !== "admin") {
     return (
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -137,10 +137,7 @@ export default function AdminDashboard() {
       <aside className="hidden md:block w-[240px] bg-white border-r border-slate-200 shadow-sm">
         <div className="flex flex-col h-full">
           <div className="px-6 py-4 border-b border-slate-300">
-            <Link
-              to="/"
-              className="text-xl font-bold text-slate-900"
-            >
+            <Link to="/" className="text-xl font-bold text-slate-900">
               Admin Dashboard
             </Link>
           </div>
@@ -148,15 +145,15 @@ export default function AdminDashboard() {
             {["dashboard", "users", "posts"].map(tab => (
               <Button
                 key={tab}
-                variant="ghost" // plain text button
+                variant="ghost"
                 className={`justify-start text-slate-900 font-medium ${
                   activeTab === tab ? "underline" : "no-underline"
                 }`}
                 onClick={() => {
-                  setActiveTab(tab)
-                  if (tab === "users") fetchUsers()
-                  if (tab === "posts") fetchPosts()
-                  if (tab === "dashboard") fetchStats()
+                  setActiveTab(tab);
+                  if (tab === "users") fetchUsers();
+                  if (tab === "posts") fetchPosts();
+                  if (tab === "dashboard") fetchStats();
                 }}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -194,7 +191,6 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
-              {/* Dashboard Cards + Chart */}
               {activeTab === "dashboard" && stats && (
                 <>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -225,7 +221,7 @@ export default function AdminDashboard() {
                           <XAxis dataKey="name" />
                           <YAxis allowDecimals={false} />
                           <Tooltip />
-                          <Bar dataKey="count" fill="#1e293b" /> {/* slate-900 / blue-black */}
+                          <Bar dataKey="count" fill="#1e293b" />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -233,7 +229,6 @@ export default function AdminDashboard() {
                 </>
               )}
 
-              {/* Users Table */}
               {activeTab === "users" && (
                 <Card className="shadow-md border border-slate-200">
                   <CardHeader>
@@ -298,7 +293,6 @@ export default function AdminDashboard() {
                 </Card>
               )}
 
-              {/* Posts Table */}
               {activeTab === "posts" && (
                 <Card className="shadow-md border border-slate-200">
                   <CardHeader>
@@ -344,5 +338,5 @@ export default function AdminDashboard() {
         </main>
       </div>
     </div>
-  )
+  );
 }

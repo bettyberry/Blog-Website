@@ -4,8 +4,6 @@ import { z } from "zod";
 import { motion } from "framer-motion";
 import { FiSend, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
-
 const contactSchema = z.object({
   name: z.string()
     .min(2, { message: "Name must be at least 2 characters" })
@@ -65,16 +63,19 @@ export default function ContactForm() {
     setStatus({ message: "", type: "" });
 
     try {
-      contactSchema.parse(formData); // validate all
+      // Validate entire form
+      contactSchema.parse(formData);
       setErrors({});
 
-      const response = await axios.post(`${API}/contact`, formData);
+      // Submit to backend
+      const response = await axios.post("http://localhost:3001/contact", formData);
 
       setStatus({
         message: response.data.message,
         type: "success"
       });
 
+      // Reset form on success
       setFormData({ name: "", email: "", message: "" });
       setTouched({ name: false, email: false, message: false });
 
@@ -90,6 +91,7 @@ export default function ContactForm() {
           type: "error"
         });
       } else if (error.response?.data?.errors) {
+        // Handle server-side validation errors
         const serverErrors = {};
         error.response.data.errors.forEach(err => {
           const field = err.split(' ')[0].toLowerCase();
@@ -226,7 +228,7 @@ export default function ContactForm() {
           )}
         </div>
 
-        {/* Submit Button */}
+        {/* Updated Submit Button to match Login style */}
         <motion.button
           type="submit"
           whileHover={{ scale: 1.02 }}
@@ -246,9 +248,11 @@ export default function ContactForm() {
             </>
           ) : (
             <div className="flex items-center justify-center gap-2">
-              <span>Send Message</span>
-              <FiSend className="h-5 w-5" />
-            </div>
+  <span>Send Message</span>
+    <FiSend className="h-5 w-5" />
+
+</div>
+
           )}
         </motion.button>
 

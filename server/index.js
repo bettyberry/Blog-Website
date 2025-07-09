@@ -19,13 +19,26 @@ const app = express();
 // Middleware
 app.use(express.static("public"));
 app.use(express.json());
+const cors = require("cors");
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://blog-website-iwxd.vercel.app"
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // or your frontend URL
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
+
 app.use(cookieParser());
 app.use(express.static("public")); // Serve static files like images
 

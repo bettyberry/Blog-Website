@@ -8,9 +8,6 @@ function Post() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  // Use VITE_API_URL environment variable as base URL
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +15,7 @@ function Post() {
   useEffect(() => {
     async function fetchPost() {
       try {
-        const res = await axios.get(`${API_URL}/getpostbyid/${id}`);
+        const res = await axios.get(`http://localhost:3001/getpostbyid/${id}`);
         setPost(res.data);
       } catch {
         setError("Failed to load post");
@@ -27,14 +24,14 @@ function Post() {
       }
     }
     fetchPost();
-  }, [id, API_URL]);
+  }, [id]);
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/deletepost/${id}`, {
+      await axios.delete(`http://localhost:3001/deletepost/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         withCredentials: true,
       });
@@ -63,7 +60,7 @@ function Post() {
       <p className="mb-6 whitespace-pre-line">{post.description}</p>
       {post.file && (
         <img
-          src={`${API_URL}/images/${post.file}`}
+          src={`http://localhost:3001/images/${post.file}`}
           alt={post.title}
           className="mb-6 max-w-full rounded"
           onError={e => { e.target.style.display = 'none'; }}
