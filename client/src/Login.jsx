@@ -25,7 +25,7 @@ function Login() {
     setError("");
 
     try {
-      const res = await axios.post(`${baseURL}/login`, formData);
+const res = await axios.post(`${baseURL}/login`, formData, { withCredentials: true });
       if (res.data.token && res.data.user) {
         localStorage.setItem("token", res.data.token);
         setUser(res.data.user);
