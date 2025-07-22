@@ -13,6 +13,8 @@ const fs = require("fs");
 const UserModel = require("./models/UserModel");
 const PostModel = require("./models/PostModel");
 const ContactModel = require("./models/ContactModel");
+const CommentModel = require("./models/CommentModel");
+
 
 const app = express();
 
@@ -20,10 +22,9 @@ const app = express();
 app.use(express.static("public"));
 app.use(express.json());
 
-
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://blog-web-j1kj.vercel.app"
+  // add your frontend URLs here if needed
 ];
 
 app.use(
@@ -42,26 +43,31 @@ app.use(
 app.use(cookieParser());
 app.use(express.static("public")); // Serve static files like images
 
-// Connect to MongoDB Atlas using URI from .env
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+    process.exit(1);
+  });
 
 // JWT verification middleware
 const verifyUser = (req, res, next) => {
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  const token =
+    req.cookies.token || req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(401).json({ error: "Invalid token" });
     req.email = decoded.email;
     req.username = decoded.username;
+    req.role = decoded.role;
     next();
   });
 };
 
-// Multer setup for file uploads
+// Storage config for multer (file uploads)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "public/images"),
   filename: (req, file, cb) =>
@@ -73,8 +79,7 @@ const upload = multer({ storage });
 const verifyAdmin = (req, res, next) => {
   verifyUser(req, res, async () => {
     try {
-      const user = await UserModel.findOne({ email: req.email });
-      if (!user || user.role !== "admin") {
+      if (req.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
       next();
@@ -84,7 +89,13 @@ const verifyAdmin = (req, res, next) => {
   });
 };
 
-// Admin dashboard stats route
+// Routes
+
+app.get("/", (req, res) => {
+  res.send("Hello from backend!");
+});
+
+// Admin routes
 app.get("/admin/stats", verifyAdmin, async (req, res) => {
   try {
     const [users, posts, contacts] = await Promise.all([
@@ -92,18 +103,12 @@ app.get("/admin/stats", verifyAdmin, async (req, res) => {
       PostModel.countDocuments(),
       ContactModel.countDocuments(),
     ]);
-
     res.json({ users, posts, contacts });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello");
-});
-
-// Get all users (admin only)
 app.get("/admin/users", verifyAdmin, async (req, res) => {
   try {
     const users = await UserModel.find().select("-password");
@@ -113,7 +118,6 @@ app.get("/admin/users", verifyAdmin, async (req, res) => {
   }
 });
 
-// Get all posts (admin only)
 app.get("/admin/posts", verifyAdmin, async (req, res) => {
   try {
     const posts = await PostModel.find();
@@ -123,7 +127,6 @@ app.get("/admin/posts", verifyAdmin, async (req, res) => {
   }
 });
 
-// Delete post (admin only)
 app.delete("/admin/posts/:id", verifyAdmin, async (req, res) => {
   try {
     const post = await PostModel.findByIdAndDelete(req.params.id);
@@ -142,13 +145,12 @@ app.delete("/admin/posts/:id", verifyAdmin, async (req, res) => {
   }
 });
 
-// Register route
+// Auth routes
 app.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const hash = await bcrypt.hash(password, 10);
-
-    const isAdmin = email === process.env.ADMIN_EMAIL; // Admin email from .env
+    const isAdmin = email === process.env.ADMIN_EMAIL;
 
     const user = await UserModel.create({
       username,
@@ -163,10 +165,9 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// Login route
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
   try {
+    const { email, password } = req.body;
     const user = await UserModel.findOne({ email });
     if (!user) return res.status(400).json({ error: "User does not exist" });
 
@@ -181,7 +182,7 @@ app.post("/login", async (req, res) => {
 
     res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
 
-    return res.json({
+    res.json({
       status: "Success",
       token,
       user: { username: user.username, email: user.email, role: user.role },
@@ -191,7 +192,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Check auth route
 app.get("/check-auth", verifyUser, async (req, res) => {
   try {
     const user = await UserModel.findOne({ email: req.email });
@@ -207,7 +207,11 @@ app.get("/check-auth", verifyUser, async (req, res) => {
   }
 });
 
-// Create post route
+app.get("/logout", (req, res) => {
+  res.clearCookie("token").json({ message: "Logged out" });
+});
+
+// Posts routes
 app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -221,22 +225,33 @@ app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
   }
 });
 
-// Get all posts
+// Get all posts with optional search and sorting
 app.get("/getposts", async (req, res) => {
   try {
-    const posts = await PostModel.find();
+    const { search, sort } = req.query;
+
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    let query = PostModel.find(filter);
+
+    if (sort === "latest") {
+      query = query.sort({ createdAt: -1 }); // Newest first
+    }
+
+    const posts = await query.exec();
     res.json(posts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Logout route
-app.get("/logout", (req, res) => {
-  res.clearCookie("token").json({ message: "Logged out" });
-});
 
-// Get post by ID
 app.get("/getpostbyid/:id", async (req, res) => {
   try {
     const post = await PostModel.findById(req.params.id);
@@ -247,7 +262,6 @@ app.get("/getpostbyid/:id", async (req, res) => {
   }
 });
 
-// Edit post route
 app.put("/editpost/:id", verifyUser, upload.single("image"), async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -275,7 +289,6 @@ app.put("/editpost/:id", verifyUser, upload.single("image"), async (req, res) =>
   }
 });
 
-// Delete post route
 app.delete("/deletepost/:id", verifyUser, async (req, res) => {
   try {
     const post = await PostModel.findOneAndDelete({
@@ -298,7 +311,43 @@ app.delete("/deletepost/:id", verifyUser, async (req, res) => {
   }
 });
 
-// Contact form submission
+// Comments routes
+app.get("/comments/:postId", async (req, res) => {
+  try {
+    const comments = await CommentModel.find({ postId: req.params.postId }).sort({ createdAt: -1 });
+    res.json(comments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/comments", verifyUser, async (req, res) => {
+  try {
+    const { postId, text } = req.body;
+    const author = req.username || "Anonymous";
+    const comment = await CommentModel.create({ postId, author, text });
+    res.status(201).json(comment);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Like post (authenticated)
+app.post("/like/:postId", verifyUser, async (req, res) => {
+  try {
+    const post = await PostModel.findById(req.params.postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    post.likes = (post.likes || 0) + 1;
+    await post.save();
+
+    res.json({ likes: post.likes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Contact form
 app.post("/contact", async (req, res) => {
   try {
     const { name, email, message } = req.body;
@@ -315,7 +364,6 @@ app.post("/contact", async (req, res) => {
   }
 });
 
-// Get all contacts
 app.get("/contacts", async (req, res) => {
   try {
     const contacts = await ContactModel.find().sort({ createdAt: -1 });

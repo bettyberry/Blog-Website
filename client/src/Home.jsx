@@ -6,12 +6,19 @@ function Home() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Use base URL from env variable with fallback to localhost
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sort, setSort] = useState(""); // "" or "latest"
+
   const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) params.append("search", searchTerm.trim());
+    if (sort) params.append("sort", sort);
+
     axios
-      .get(`${baseURL}/getposts`)
+      .get(`${baseURL}/getposts?${params.toString()}`)
       .then((res) => {
         setPosts(res.data);
         setLoading(false);
@@ -20,15 +27,7 @@ function Home() {
         console.error(err);
         setLoading(false);
       });
-  }, [baseURL]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-700"></div>
-      </div>
-    );
-  }
+  }, [baseURL, searchTerm, sort]);
 
   return (
     <div className="bg-white">
@@ -45,6 +44,50 @@ function Home() {
           </p>
         </div>
       </section>
+
+      {/* Search and Sort Controls */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <input
+          type="text"
+          placeholder="Search posts..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="
+            w-full md:w-1/3
+            px-4 py-3
+            bg-slate-900 text-indigo-200 placeholder-indigo-400
+            border border-indigo-700
+            rounded-lg
+            shadow-sm
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+            transition
+            duration-300
+          "
+        />
+
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="
+            w-full md:w-48
+            px-4 py-3
+            bg-slate-900 text-indigo-200
+            border border-indigo-700
+            rounded-lg
+            shadow-sm
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+            transition
+            duration-300
+          "
+        >
+          <option className="bg-slate-900 text-indigo-200" value="">
+            Sort by
+          </option>
+          <option className="bg-slate-900 text-indigo-200" value="latest">
+            Latest Posts
+          </option>
+        </select>
+      </div>
 
       {/* Feature Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -107,11 +150,17 @@ function Home() {
           <h2 className="text-3xl font-bold text-slate-800 font-serif">Latest Culinary Stories</h2>
           <div className="mt-4 h-1 w-20 bg-slate-600 mx-auto"></div>
         </div>
-        {posts.length === 0 ? (
+
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-slate-700"></div>
+            <span className="ml-4 text-slate-700">Loading posts...</span>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl shadow-md">
             <div className="text-6xl mb-4">🍽️</div>
-            <h3 className="text-2xl font-bold text-slate-800">No recipes shared yet</h3>
-            <p className="mt-2 text-slate-600">Be the first to share your culinary masterpiece!</p>
+            <h3 className="text-2xl font-bold text-slate-800">No recipes found</h3>
+            <p className="mt-2 text-slate-600">Try a different search or create a new recipe!</p>
             <div className="mt-6">
               <Link
                 to="/create"
@@ -137,7 +186,9 @@ function Home() {
                         src={`${baseURL}/images/${post.file}`}
                         alt={post.title}
                         className="w-full h-full object-cover rounded-t-xl"
-                        onError={e => { e.target.style.display = 'none'; }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
                       />
                     )}
                     <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs font-medium">

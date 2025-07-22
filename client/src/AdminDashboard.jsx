@@ -3,11 +3,19 @@ import { useUserContext } from "./App";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
-  Card, CardHeader, CardFooter, CardTitle, CardAction,
-  CardDescription, CardContent,
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardContent,
 } from "./components/ui/card";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "./components/ui/table";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
@@ -16,12 +24,22 @@ import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Skeleton } from "./components/ui/skeleton";
 import {
-  Sheet, SheetContent, SheetDescription,
-  SheetHeader, SheetTitle, SheetTrigger,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
 } from "./components/ui/sheet";
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
 const API = import.meta.env.VITE_API_URL;
@@ -35,10 +53,16 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Pagination states
+  const [usersPage, setUsersPage] = useState(1);
+  const [postsPage, setPostsPage] = useState(1);
+  const itemsPerPage = 10;
+
   useEffect(() => {
     if (user) fetchStats();
   }, [user]);
 
+  // Fetch dashboard stats
   const fetchStats = async () => {
     try {
       setLoading(true);
@@ -54,6 +78,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch users for admin tab
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -69,6 +94,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch posts for admin tab
   const fetchPosts = async () => {
     try {
       setLoading(true);
@@ -84,6 +110,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Delete a post by id
   const deletePost = async (postId) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
@@ -91,6 +118,7 @@ export default function AdminDashboard() {
         await axios.delete(`${API}/admin/posts/${postId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        // Refresh posts after deletion
         fetchPosts();
       } catch (err) {
         console.error("Failed to delete post:", err);
@@ -98,21 +126,58 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  // Save user edits to backend
+  async function saveUserEdits(userId, updatedData) {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/admin/users/${userId}`, updatedData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Refresh users after save
+      fetchUsers();
+      alert("User updated successfully");
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      alert("Failed to update user");
+    }
+  }
+
+  // Pagination helper to slice items
+  function paginate(items, page) {
+    const start = (page - 1) * itemsPerPage;
+    return items.slice(start, start + itemsPerPage);
+  }
+
+  // Filtering users & posts based on search term
+  const filteredUsers = users.filter(
+    (user) =>
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredPosts = posts.filter(post =>
-    post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (post.email?.username && post.email.username.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredPosts = posts.filter(
+    (post) =>
+      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (post.author?.username &&
+        post.author.username.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const chartData = stats ? [
-    { name: "Users", count: stats.users },
-    { name: "Posts", count: stats.posts },
-    { name: "Contacts", count: stats.contacts },
-  ] : [];
+  // Paginated arrays
+  const paginatedUsers = paginate(filteredUsers, usersPage);
+  const paginatedPosts = paginate(filteredPosts, postsPage);
+
+  // Total pages count
+  const totalUsersPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const totalPostsPages = Math.ceil(filteredPosts.length / itemsPerPage);
+
+  // Chart data for dashboard tab
+  const chartData = stats
+    ? [
+        { name: "Users", count: stats.users },
+        { name: "Posts", count: stats.posts },
+        { name: "Contacts", count: stats.contacts },
+      ]
+    : [];
 
   if (!user || user.role !== "admin") {
     return (
@@ -142,7 +207,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <nav className="flex flex-col gap-2 px-4 py-6">
-            {["dashboard", "users", "posts"].map(tab => (
+            {["dashboard", "users", "posts"].map((tab) => (
               <Button
                 key={tab}
                 variant="ghost"
@@ -151,6 +216,9 @@ export default function AdminDashboard() {
                 }`}
                 onClick={() => {
                   setActiveTab(tab);
+                  setSearchTerm("");
+                  setUsersPage(1);
+                  setPostsPage(1);
                   if (tab === "users") fetchUsers();
                   if (tab === "posts") fetchPosts();
                   if (tab === "dashboard") fetchStats();
@@ -174,10 +242,14 @@ export default function AdminDashboard() {
           {(activeTab === "users" || activeTab === "posts") && (
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Search users or posts..."
               className="max-w-xs bg-slate-100 border border-slate-300 text-slate-800 placeholder:text-slate-400"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setUsersPage(1);
+                setPostsPage(1);
+              }}
             />
           )}
         </header>
@@ -191,6 +263,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
+              {/* Dashboard Tab */}
               {activeTab === "dashboard" && stats && (
                 <>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -199,12 +272,19 @@ export default function AdminDashboard() {
                       { label: "Total Posts", count: stats.posts },
                       { label: "Total Contacts", count: stats.contacts },
                     ].map(({ label, count }) => (
-                      <Card key={label} className="shadow-md border border-slate-200">
+                      <Card
+                        key={label}
+                        className="shadow-md border border-slate-200"
+                      >
                         <CardHeader>
-                          <CardTitle className="text-sm font-medium text-slate-600">{label}</CardTitle>
+                          <CardTitle className="text-sm font-medium text-slate-600">
+                            {label}
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-3xl font-bold text-slate-900">{count}</div>
+                          <div className="text-3xl font-bold text-slate-900">
+                            {count}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -216,7 +296,10 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <BarChart
+                          data={chartData}
+                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis allowDecimals={false} />
@@ -229,6 +312,7 @@ export default function AdminDashboard() {
                 </>
               )}
 
+              {/* Users Tab */}
               {activeTab === "users" && (
                 <Card className="shadow-md border border-slate-200">
                   <CardHeader>
@@ -245,54 +329,83 @@ export default function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredUsers.map(user => (
-                          <TableRow key={user._id}>
-                            <TableCell className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src="/avatars/01.png" />
-                                <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              {user.username}
-                            </TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>
-                              <Badge className="bg-orange-600 text-white">{user.role}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Sheet>
-                                <SheetTrigger asChild>
-                                  <Button className="bg-slate-900 hover:bg-slate-950 text-white">Edit</Button>
-                                </SheetTrigger>
-                                <SheetContent className="bg-white text-slate-900">
-                                  <SheetHeader>
-                                    <SheetTitle>Edit User</SheetTitle>
-                                    <SheetDescription>Make changes and save.</SheetDescription>
-                                  </SheetHeader>
-                                  <div className="grid gap-4 py-4">
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <Label className="text-right">Username</Label>
-                                      <Input defaultValue={user.username} className="col-span-3" />
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <Label className="text-right">Email</Label>
-                                      <Input defaultValue={user.email} className="col-span-3" />
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <Label className="text-right">Role</Label>
-                                      <Input defaultValue={user.role} className="col-span-3" />
-                                    </div>
-                                  </div>
-                                </SheetContent>
-                              </Sheet>
+                        {paginatedUsers.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={4}
+                              className="text-center text-gray-500 py-6"
+                            >
+                              No users found.
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          paginatedUsers.map((user) => (
+                            <TableRow key={user._id}>
+                              <TableCell className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarImage src="/avatars/01.png" />
+                                  <AvatarFallback>
+                                    {user.username.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {user.username}
+                              </TableCell>
+                              <TableCell>{user.email}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-orange-600 text-white">
+                                  {user.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Sheet>
+                                  <SheetTrigger asChild>
+                                    <Button className="bg-slate-900 hover:bg-slate-950 text-white">
+                                      Edit
+                                    </Button>
+                                  </SheetTrigger>
+                                  <SheetContent className="bg-white text-slate-900">
+                                    <SheetHeader>
+                                      <SheetTitle>Edit User</SheetTitle>
+                                      <SheetDescription>
+                                        Make changes and save.
+                                      </SheetDescription>
+                                    </SheetHeader>
+                                    <UserEditForm
+                                      user={user}
+                                      onSave={saveUserEdits}
+                                    />
+                                  </SheetContent>
+                                </Sheet>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </CardContent>
+                  {totalUsersPages > 1 && (
+                    <CardFooter className="flex justify-center gap-2">
+                      <Button
+                        disabled={usersPage === 1}
+                        onClick={() => setUsersPage(usersPage - 1)}
+                      >
+                        Prev
+                      </Button>
+                      <span className="px-4 py-2 text-sm text-slate-700">
+                        Page {usersPage} of {totalUsersPages}
+                      </span>
+                      <Button
+                        disabled={usersPage === totalUsersPages}
+                        onClick={() => setUsersPage(usersPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </CardFooter>
+                  )}
                 </Card>
               )}
 
+              {/* Posts Tab */}
               {activeTab === "posts" && (
                 <Card className="shadow-md border border-slate-200">
                   <CardHeader>
@@ -308,34 +421,126 @@ export default function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredPosts.map(post => (
-                          <TableRow key={post._id}>
-                            <TableCell>
-                              <Link to={`/post/${post._id}`} className="font-medium text-indigo-700 hover:underline">
-                                {post.title}
-                              </Link>
-                            </TableCell>
-                            <TableCell>
-                              {post.email?.username || post.email || "Unknown"}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                className="bg-slate-900 hover:bg-slate-950 text-white"
-                                onClick={() => deletePost(post._id)}
-                              >
-                                Delete
-                              </Button>
+                        {paginatedPosts.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={3}
+                              className="text-center text-gray-500 py-6"
+                            >
+                              No posts found.
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          paginatedPosts.map((post) => (
+                            <TableRow key={post._id}>
+                              <TableCell>
+                                <Link
+                                  to={`/post/${post._id}`}
+                                  className="font-medium text-indigo-700 hover:underline"
+                                >
+                                  {post.title}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                {post.author?.username ||
+                                  post.author?.email ||
+                                  "Unknown"}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  className="bg-slate-900 hover:bg-slate-950 text-white"
+                                  onClick={() => deletePost(post._id)}
+                                >
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </CardContent>
+                  {totalPostsPages > 1 && (
+                    <CardFooter className="flex justify-center gap-2">
+                      <Button
+                        disabled={postsPage === 1}
+                        onClick={() => setPostsPage(postsPage - 1)}
+                      >
+                        Prev
+                      </Button>
+                      <span className="px-4 py-2 text-sm text-slate-700">
+                        Page {postsPage} of {totalPostsPages}
+                      </span>
+                      <Button
+                        disabled={postsPage === totalPostsPages}
+                        onClick={() => setPostsPage(postsPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </CardFooter>
+                  )}
                 </Card>
               )}
             </>
           )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+// Sub-component: User edit form inside the Sheet
+function UserEditForm({ user, onSave }) {
+  const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email);
+  const [role, setRole] = useState(user.role);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(user._id, { username, email, role });
+    setSaving(false);
+  };
+
+  return (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">Username</Label>
+        <Input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="col-span-3"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">Email</Label>
+        <Input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="col-span-3"
+          type="email"
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label className="text-right">Role</Label>
+        <select
+          className="col-span-3 border border-slate-300 rounded-md p-2"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          {/* Add more roles if needed */}
+        </select>
+      </div>
+      <div className="col-span-4 flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-amber-600 hover:bg-amber-700 text-white"
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

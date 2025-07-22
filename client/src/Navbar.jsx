@@ -12,85 +12,98 @@ function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await axios.get("https://blog-website-7v8d.onrender.com/logout", {
-        withCredentials: true,
-      });
-      localStorage.removeItem("token");
-      setUser(null);
-      navigate("/");
-    } catch (err) {
-      console.error("Logout error:", err);
+      await axios.get("http://localhost:3001/logout", { withCredentials: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
       localStorage.removeItem("token");
       setUser(null);
       navigate("/");
     }
   };
 
+  const isAdmin = user?.role === "admin";
+
   const desktopAuthBtnClasses = "bg-amber-600 hover:bg-amber-700 text-white";
   const mobileAuthBtnClasses = "bg-slate-800 hover:bg-slate-900 text-white";
 
   return (
-    <nav className="fixed w-full bg-white shadow-md z-50">
+    <nav className="fixed w-full bg-white shadow-md z-50" aria-label="Primary navigation">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-amber-600 font-serif">
+        <div className="flex justify-between items-center h-16">
+          {/* Brand */}
+          <Link
+            to="/"
+            className="text-2xl font-bold text-amber-600 font-serif"
+            aria-label="The Bloom Edit Home"
+            onClick={() => setMenuOpen(false)}
+          >
             The Bloom Edit
           </Link>
 
-          {/* Desktop Links */}
-          <div className="hidden md:flex gap-4 items-center">
-            <Link to="/">
+          {/* Desktop navigation */}
+          <div className="hidden md:flex items-center gap-4">
+            <Link to="/" onClick={() => setMenuOpen(false)}>
               <Button variant="ghost">Home</Button>
             </Link>
+
             {user?.username && (
-              <Link to="/create">
+              <Link to="/create" onClick={() => setMenuOpen(false)}>
                 <Button variant="ghost">Create</Button>
               </Link>
             )}
-            <Link to="/contact">
+
+            <Link to="/contact" onClick={() => setMenuOpen(false)}>
               <Button variant="ghost">Contact</Button>
             </Link>
-            {user?.role === "admin" && (
-              <Link to="/admin">
+
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setMenuOpen(false)}>
                 <Button variant="ghost">Admin</Button>
+              </Link>
+            )}
+
+            {!isAdmin && user?.username && (
+              <Link to="/my-posts" onClick={() => setMenuOpen(false)}>
+                <Button variant="ghost">My Posts</Button>
               </Link>
             )}
           </div>
 
-          {/* Desktop Auth */}
+          {/* Desktop auth area */}
           <div className="hidden md:flex items-center gap-4">
             {user?.username ? (
               <>
-                <span className="text-sm text-gray-600">
-                  Welcome, <span className="font-semibold">{user.username}</span>
-                </span>
-                <Button
-                  onClick={handleLogout}
-                  className={desktopAuthBtnClasses}
-                >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-semibold">
+                    {user.username[0].toUpperCase()}
+                  </div>
+                  <span className="text-sm text-gray-600 font-semibold">{user.username}</span>
+                </div>
+                <Button onClick={handleLogout} className={desktopAuthBtnClasses}>
                   Sign Out
                 </Button>
               </>
             ) : (
               <>
-                <Link to="/login">
+                <Link to="/login" onClick={() => setMenuOpen(false)}>
                   <Button className={desktopAuthBtnClasses}>Sign In</Button>
                 </Link>
-                <Link to="/register">
+                <Link to="/register" onClick={() => setMenuOpen(false)}>
                   <Button className={desktopAuthBtnClasses}>Register</Button>
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu toggle */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-800 hover:text-amber-600 focus:outline-none"
-              aria-label="Main menu"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-800 hover:text-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              aria-label="Toggle menu"
               aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
             >
               {menuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -98,14 +111,22 @@ function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile menu panel */}
       {menuOpen && (
         <>
+          {/* Overlay */}
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
           />
-          <div className="fixed top-0 left-0 right-0 bg-white shadow-xl z-50 transition transform duration-300">
+          {/* Mobile menu */}
+          <div
+            id="mobile-menu"
+            className="fixed top-0 left-0 right-0 bg-white shadow-xl z-50 transition-transform duration-300"
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="px-5 pt-4 pb-6 space-y-2">
               <div className="flex justify-between items-center border-b border-gray-200 pb-3">
                 <Link
@@ -117,58 +138,78 @@ function Navbar() {
                 </Link>
                 <button
                   onClick={() => setMenuOpen(false)}
-                  className="p-2 text-gray-800 hover:text-amber-600"
+                  className="p-2 text-gray-800 hover:text-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  aria-label="Close menu"
                 >
                   <X size={24} />
                 </button>
               </div>
 
-              <Link
-                to="/"
-                onClick={() => setMenuOpen(false)}
-                className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
-              >
-                Home
-              </Link>
-              {user?.username && (
+              {/* Mobile nav links */}
+              <nav className="flex flex-col">
                 <Link
-                  to="/create"
+                  to="/"
                   onClick={() => setMenuOpen(false)}
                   className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
                 >
-                  Create
+                  Home
                 </Link>
-              )}
-              <Link
-                to="/contact"
-                onClick={() => setMenuOpen(false)}
-                className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
-              >
-                Contact
-              </Link>
-              {user?.role === "admin" && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMenuOpen(false)}
-                  className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
-                >
-                  Admin
-                </Link>
-              )}
 
-              {/* Mobile Auth Buttons */}
+                {user?.username && (
+                  <Link
+                    to="/create"
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
+                  >
+                    Create
+                  </Link>
+                )}
+
+                <Link
+                  to="/contact"
+                  onClick={() => setMenuOpen(false)}
+                  className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
+                >
+                  Contact
+                </Link>
+
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
+                  >
+                    Admin
+                  </Link>
+                )}
+
+                {!isAdmin && user?.username && (
+                  <Link
+                    to="/my-posts"
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-3 px-4 text-lg font-medium text-gray-900 hover:bg-amber-100 rounded-md transition"
+                  >
+                    My Posts
+                  </Link>
+                )}
+              </nav>
+
+              {/* Mobile auth section */}
               <div className="pt-4 border-t border-gray-200 mt-4">
                 {user?.username ? (
                   <>
-                    <p className="text-sm text-gray-600 mb-3 px-3">
-                      Welcome, <span className="font-semibold">{user.username}</span>
-                    </p>
+                    <div className="flex items-center gap-2 px-3 mb-3">
+                      <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-semibold">
+                        {user.username[0].toUpperCase()}
+                      </div>
+                      <span className="text-sm text-gray-600 font-semibold">{user.username}</span>
+                    </div>
                     <button
                       onClick={() => {
                         handleLogout();
                         setMenuOpen(false);
                       }}
-                      className="w-full py-2 px-4 rounded-md text-white bg-amber-600 hover:bg-amber-700"
+                      className="w-full py-2 px-4 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-600"
                     >
                       Sign Out
                     </button>

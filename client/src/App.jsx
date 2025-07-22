@@ -7,6 +7,7 @@ import CreatePost from "./CreatePost";
 import Contact from "./Contact";
 import Post from "./Post";
 import EditPost from "./EditPost";
+import MyPosts from "./MyPosts";
 import AdminDashboard from "./AdminDashboard";
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
@@ -114,7 +115,9 @@ function App() {
               }
             />
             {/* Optional catch-all redirect for unknown routes */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+<Route path="/my-posts" element={<MyPosts />} />
+<Route path="*" element={<Navigate to="/" replace />} />
+
           </Routes>
         </main>
       </BrowserRouter>
