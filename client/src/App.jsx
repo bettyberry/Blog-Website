@@ -15,7 +15,7 @@ import axios from "axios";
 export const userContext = createContext();
 export const useUserContext = () => useContext(userContext);
 
-// Get API base URL from env, fallback to localhost for dev
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 // AdminRoute component to restrict admin dashboard

@@ -3,14 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { userContext } from "./App";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Loader2 } from "lucide-react";
 
 function Navbar() {
   const { user, setUser } = useContext(userContext);
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
+    setLoading(true);
     try {
       await axios.get("http://localhost:3001/logout", { withCredentials: true });
     } catch (error) {
@@ -18,12 +20,12 @@ function Navbar() {
     } finally {
       localStorage.removeItem("token");
       setUser(null);
+      setLoading(false);
       navigate("/");
     }
   };
 
   const isAdmin = user?.role === "admin";
-
   const desktopAuthBtnClasses = "bg-amber-600 hover:bg-amber-700 text-white";
   const mobileAuthBtnClasses = "bg-slate-800 hover:bg-slate-900 text-white";
 
@@ -31,7 +33,6 @@ function Navbar() {
     <nav className="fixed w-full bg-white shadow-md z-50" aria-label="Primary navigation">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Brand */}
           <Link
             to="/"
             className="text-2xl font-bold text-amber-600 font-serif"
@@ -41,7 +42,6 @@ function Navbar() {
             The Bloom Edit
           </Link>
 
-          {/* Desktop navigation */}
           <div className="hidden md:flex items-center gap-4">
             <Link to="/" onClick={() => setMenuOpen(false)}>
               <Button variant="ghost">Home</Button>
@@ -70,7 +70,6 @@ function Navbar() {
             )}
           </div>
 
-          {/* Desktop auth area */}
           <div className="hidden md:flex items-center gap-4">
             {user?.username ? (
               <>
@@ -80,14 +79,18 @@ function Navbar() {
                   </div>
                   <span className="text-sm text-gray-600 font-semibold">{user.username}</span>
                 </div>
-                <Button onClick={handleLogout} className={desktopAuthBtnClasses}>
-                  Sign Out
+                <Button
+                  onClick={handleLogout}
+                  disabled={loading}
+                  className={desktopAuthBtnClasses}
+                >
+                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Sign Out"}
                 </Button>
               </>
             ) : (
               <>
                 <Link to="/login" onClick={() => setMenuOpen(false)}>
-                  <Button className={desktopAuthBtnClasses}>Sign In</Button>
+                  <Button variant="ghost" className="text-black hover:text-amber-600">Sign In</Button>
                 </Link>
                 <Link to="/register" onClick={() => setMenuOpen(false)}>
                   <Button className={desktopAuthBtnClasses}>Register</Button>
@@ -96,7 +99,6 @@ function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu toggle */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -111,16 +113,13 @@ function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu panel */}
       {menuOpen && (
         <>
-          {/* Overlay */}
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
-          {/* Mobile menu */}
           <div
             id="mobile-menu"
             className="fixed top-0 left-0 right-0 bg-white shadow-xl z-50 transition-transform duration-300"
@@ -145,7 +144,6 @@ function Navbar() {
                 </button>
               </div>
 
-              {/* Mobile nav links */}
               <nav className="flex flex-col">
                 <Link
                   to="/"
@@ -194,7 +192,6 @@ function Navbar() {
                 )}
               </nav>
 
-              {/* Mobile auth section */}
               <div className="pt-4 border-t border-gray-200 mt-4">
                 {user?.username ? (
                   <>
@@ -209,9 +206,14 @@ function Navbar() {
                         handleLogout();
                         setMenuOpen(false);
                       }}
-                      className="w-full py-2 px-4 rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      className="w-full py-2 px-4 rounded-md text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      disabled={loading}
                     >
-                      Sign Out
+                      {loading ? (
+                        <Loader2 className="animate-spin h-5 w-5 mx-auto" />
+                      ) : (
+                        "Sign Out"
+                      )}
                     </button>
                   </>
                 ) : (
@@ -219,7 +221,7 @@ function Navbar() {
                     <Link
                       to="/login"
                       onClick={() => setMenuOpen(false)}
-                      className={`block w-full text-center py-2 px-4 rounded-md ${mobileAuthBtnClasses}`}
+                      className="block w-full text-center py-2 px-4 font-semibold text-black hover:text-amber-600"
                     >
                       Sign In
                     </Link>

@@ -49,6 +49,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [subscribers, setSubscribers] = useState([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,6 +57,7 @@ export default function AdminDashboard() {
   // Pagination states
   const [usersPage, setUsersPage] = useState(1);
   const [postsPage, setPostsPage] = useState(1);
+  const [subscribersPage, setSubscribersPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -105,6 +107,22 @@ export default function AdminDashboard() {
       setPosts(res.data);
     } catch (err) {
       console.error("Failed to fetch posts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch subscribers for admin tab
+  const fetchSubscribers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/admin/subscribers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSubscribers(res.data);
+    } catch (err) {
+      console.error("Failed to fetch subscribers:", err);
     } finally {
       setLoading(false);
     }
@@ -162,13 +180,15 @@ export default function AdminDashboard() {
         post.author.username.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Paginated arrays
+  // No search input for subscribers, show all paginated
   const paginatedUsers = paginate(filteredUsers, usersPage);
   const paginatedPosts = paginate(filteredPosts, postsPage);
+  const paginatedSubscribers = paginate(subscribers, subscribersPage);
 
   // Total pages count
   const totalUsersPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const totalPostsPages = Math.ceil(filteredPosts.length / itemsPerPage);
+  const totalSubscribersPages = Math.ceil(subscribers.length / itemsPerPage);
 
   // Chart data for dashboard tab
   const chartData = stats
@@ -207,7 +227,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <nav className="flex flex-col gap-2 px-4 py-6">
-            {["dashboard", "users", "posts"].map((tab) => (
+            {["dashboard", "users", "posts", "subscribers"].map((tab) => (
               <Button
                 key={tab}
                 variant="ghost"
@@ -219,8 +239,10 @@ export default function AdminDashboard() {
                   setSearchTerm("");
                   setUsersPage(1);
                   setPostsPage(1);
+                  setSubscribersPage(1);
                   if (tab === "users") fetchUsers();
                   if (tab === "posts") fetchPosts();
+                  if (tab === "subscribers") fetchSubscribers();
                   if (tab === "dashboard") fetchStats();
                 }}
               >
@@ -238,6 +260,7 @@ export default function AdminDashboard() {
             {activeTab === "dashboard" && "📊 Dashboard"}
             {activeTab === "users" && "👥 User Management"}
             {activeTab === "posts" && "📝 Post Management"}
+            {activeTab === "subscribers" && "📧 Subscribers"}
           </h2>
           {(activeTab === "users" || activeTab === "posts") && (
             <Input
@@ -481,6 +504,65 @@ export default function AdminDashboard() {
                   )}
                 </Card>
               )}
+
+              {/* Subscribers Tab */}
+              {activeTab === "subscribers" && (
+                <Card className="shadow-md border border-slate-200">
+                  <CardHeader>
+                    <CardTitle>All Subscribers</CardTitle>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Subscribed At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedSubscribers.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={2}
+                              className="text-center text-gray-500 py-6"
+                            >
+                              No subscribers found.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedSubscribers.map((sub) => (
+                            <TableRow key={sub._id || sub.email}>
+                              <TableCell>{sub.email}</TableCell>
+                              <TableCell>
+                                {new Date(sub.createdAt).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                  {totalSubscribersPages > 1 && (
+                    <CardFooter className="flex justify-center gap-2">
+                      <Button
+                        disabled={subscribersPage === 1}
+                        onClick={() => setSubscribersPage(subscribersPage - 1)}
+                      >
+                        Prev
+                      </Button>
+                      <span className="px-4 py-2 text-sm text-slate-700">
+                        Page {subscribersPage} of {totalSubscribersPages}
+                      </span>
+                      <Button
+                        disabled={subscribersPage === totalSubscribersPages}
+                        onClick={() => setSubscribersPage(subscribersPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              )}
             </>
           )}
         </main>
@@ -489,11 +571,11 @@ export default function AdminDashboard() {
   );
 }
 
-// Sub-component: User edit form inside the Sheet
+// Editable user form inside Sheet for User edit
 function UserEditForm({ user, onSave }) {
-  const [username, setUsername] = useState(user.username);
-  const [email, setEmail] = useState(user.email);
-  const [role, setRole] = useState(user.role);
+  const [username, setUsername] = useState(user.username || "");
+  const [email, setEmail] = useState(user.email || "");
+  const [role, setRole] = useState(user.role || "user");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -503,45 +585,41 @@ function UserEditForm({ user, onSave }) {
   };
 
   return (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label className="text-right">Username</Label>
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="username">Username</Label>
         <Input
+          id="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="col-span-3"
         />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label className="text-right">Email</Label>
+      <div>
+        <Label htmlFor="email">Email</Label>
         <Input
+          id="email"
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="col-span-3"
-          type="email"
         />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label className="text-right">Role</Label>
+      <div>
+        <Label htmlFor="role">Role</Label>
         <select
-          className="col-span-3 border border-slate-300 rounded-md p-2"
+          id="role"
           value={role}
           onChange={(e) => setRole(e.target.value)}
+          className="w-full border border-slate-300 rounded px-2 py-1"
         >
           <option value="user">User</option>
           <option value="admin">Admin</option>
-          {/* Add more roles if needed */}
+          <option value="employee">Employee</option>
+          <option value="student">Student</option>
         </select>
       </div>
-      <div className="col-span-4 flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-amber-600 hover:bg-amber-700 text-white"
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
+      <Button onClick={handleSave} disabled={saving}>
+        {saving ? "Saving..." : "Save"}
+      </Button>
     </div>
   );
 }

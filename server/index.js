@@ -1,4 +1,4 @@
-require("dotenv").config(); // Load .env variables
+require("dotenv").config(); // Load .env variables 
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -14,6 +14,7 @@ const UserModel = require("./models/UserModel");
 const PostModel = require("./models/PostModel");
 const ContactModel = require("./models/ContactModel");
 const CommentModel = require("./models/CommentModel");
+const SubscriberModel = require("./models/SubscriberModel");
 
 
 const app = express();
@@ -24,7 +25,6 @@ app.use(express.json());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  // add your frontend URLs here if needed
 ];
 
 app.use(
@@ -41,18 +41,23 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.static("public")); // Serve static files like images
+app.use(express.static("public")); 
 
-// Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI)  
   .then(() => console.log("MongoDB connected"))
   .catch((err) => {
     console.error("MongoDB connection error:", err.message);
     process.exit(1);
   });
 
-// JWT verification middleware
+const savedPostSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  postId: { type: mongoose.Schema.Types.ObjectId, ref: "Post", required: true },
+}, { timestamps: true });
+savedPostSchema.index({ userId: 1, postId: 1 }, { unique: true });
+const SavedPost = mongoose.model("SavedPost", savedPostSchema);
+
 const verifyUser = (req, res, next) => {
   const token =
     req.cookies.token || req.headers.authorization?.split(" ")[1];
@@ -63,6 +68,7 @@ const verifyUser = (req, res, next) => {
     req.email = decoded.email;
     req.username = decoded.username;
     req.role = decoded.role;
+    req.userId = decoded._id || decoded.id; // assuming your JWT includes user id; if not, you may need to add it on login
     next();
   });
 };
@@ -174,8 +180,9 @@ app.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: "Password is incorrect" });
 
+    // Include user._id in JWT payload for saved posts
     const token = jwt.sign(
-      { email: user.email, username: user.username, role: user.role },
+      { email: user.email, username: user.username, role: user.role, id: user._id },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -372,6 +379,91 @@ app.get("/contacts", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch contacts", error: error.message });
   }
 });
+
+app.post("/subscribe", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "Valid email is required." });
+    }
+
+    // Simple email regex validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format." });
+    }
+
+    const existing = await SubscriberModel.findOne({ email });
+    if (existing) {
+      return res.status(409).json({ error: "Email already subscribed." });
+    }
+
+    const subscriber = await SubscriberModel.create({ email });
+
+    res.status(201).json({ message: "Subscribed successfully!", subscriber });
+  } catch (err) {
+    console.error("Subscribe error:", err);
+    res.status(500).json({ error: "Server error, try again later." });
+  }
+});
+
+app.post("/savedposts/:postId", verifyUser, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const postId = req.params.postId;
+
+    const exists = await SavedPost.findOne({ userId, postId });
+    if (exists) return res.status(400).json({ error: "Post already saved" });
+
+    const savedPost = new SavedPost({ userId, postId });
+    await savedPost.save();
+
+    res.json({ message: "Post saved" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save post" });
+  }
+});
+
+// Unsave a post
+app.delete("/savedposts/:postId", verifyUser, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const postId = req.params.postId;
+
+    const deleted = await SavedPost.findOneAndDelete({ userId, postId });
+    if (!deleted) return res.status(404).json({ error: "Saved post not found" });
+
+    res.json({ message: "Post removed from saved posts" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to remove saved post" });
+  }
+});
+app.get("/admin/subscribers", verifyAdmin, async (req, res) => {
+  try {
+    const subscribers = await SubscriberModel.find().sort({ createdAt: -1 });
+    res.json(subscribers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check if saved
+app.get("/savedposts/check/:postId", verifyUser, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const postId = req.params.postId;
+
+    const saved = await SavedPost.exists({ userId, postId });
+    res.json({ saved: !!saved });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to check saved post" });
+  }
+});
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
