@@ -24,23 +24,24 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const allowedOrigins = [
+  "",
   "http://localhost:5173"
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn("Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
-
 
 app.use(cookieParser());
 app.use(express.static("public")); 
@@ -75,15 +76,97 @@ const verifyUser = (req, res, next) => {
   });
 };
 
-// Storage config for multer (file uploads)
+// Storage config for multer (updated to be more robust)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "public/images"),
-  filename: (req, file, cb) =>
-    cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname)),
+  destination: (req, file, cb) => {
+    const dir = 'public/images';
+    // Ensure directory exists
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
 });
-const upload = multer({ storage });
 
-// Admin verification middleware
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
+// Updated Create Post Route
+app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const email = req.email;
+    const file = req.file?.filename || null;
+
+    if (!title || !description) {
+      return res.status(400).json({ error: "Title and description are required" });
+    }
+
+    const newPost = await PostModel.create({ 
+      title, 
+      description, 
+      email, 
+      file 
+    });
+    
+    res.status(201).json(newPost);
+  } catch (err) {
+    console.error("Create post error:", err);
+    if (req.file) {
+      fs.unlink(path.join(__dirname, 'public', 'images', req.file.filename), () => {});
+    }
+    res.status(500).json({ error: "Failed to create post" });
+  }
+});
+
+// Updated Edit Post Route
+app.put("/editpost/:id", verifyUser, upload.single("file"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
+    const email = req.email;
+
+    // Verify post exists and belongs to user
+    const existingPost = await PostModel.findById(id);
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    if (existingPost.email !== email) {
+      return res.status(403).json({ error: "Not authorized to edit this post" });
+    }
+
+    const updateData = { title, description };
+    
+    if (req.file) {
+      if (existingPost.file) {
+        const oldFilePath = path.join(__dirname, 'public', 'images', existingPost.file);
+        fs.unlink(oldFilePath, (err) => {
+          if (err) console.error("Failed to delete old image:", err);
+        });
+      }
+      updateData.file = req.file.filename;
+    }
+
+    const updatedPost = await PostModel.findByIdAndUpdate(id, updateData, { 
+      new: true 
+    });
+
+    res.json(updatedPost);
+  } catch (err) {
+    console.error("Edit post error:", err);
+    // Delete newly uploaded file if error occurred
+    if (req.file) {
+      fs.unlink(path.join(__dirname, 'public', 'images', req.file.filename), () => {});
+    }
+    res.status(500).json({ error: "Failed to update post" });
+  }
+});
+
+
 const verifyAdmin = (req, res, next) => {
   verifyUser(req, res, async () => {
     try {
@@ -270,33 +353,38 @@ app.get("/getpostbyid/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-app.put("/editpost/:id", verifyUser, upload.single("image"), async (req, res) => {
+app.put("/editpost/:id", upload.single("image"), async (req, res) => {
   try {
+    const { id } = req.params;
     const { title, description } = req.body;
-    const post = await PostModel.findOne({ _id: req.params.id, email: req.email });
 
-    if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
+    const existingPost = await PostModel.findById(id);
+    if (!existingPost) return res.status(404).json({ error: "Post not found" });
+
+    let imagePath = existingPost.image; // default to old image
 
     if (req.file) {
-      if (post.file) {
-        const oldPath = path.join(__dirname, "public", "images", post.file);
-        fs.unlink(oldPath, (err) => {
-          if (err) console.log("Failed to delete old image:", err.message);
-        });
+      // Delete old image if it exists
+      if (existingPost.image && fs.existsSync(existingPost.image)) {
+        fs.unlinkSync(existingPost.image);
       }
-      post.file = req.file.filename;
+
+      imagePath = req.file.path;
     }
 
-    post.title = title;
-    post.description = description;
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      id,
+      { title, description, image: imagePath },
+      { new: true }
+    );
 
-    await post.save();
-    res.json("Post updated successfully!");
+    res.status(200).json(updatedPost);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error updating post:", err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 app.delete("/deletepost/:id", verifyUser, async (req, res) => {
   try {

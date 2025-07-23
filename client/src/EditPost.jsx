@@ -7,7 +7,7 @@ function EditPost() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    image: null,
+    file: null, // Changed from 'image' to 'file' for consistency
   });
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState({ fetch: true, submit: false });
@@ -35,11 +35,11 @@ function EditPost() {
         setFormData({
           title: res.data.title,
           description: res.data.description,
-          image: null,
+          file: null,
         });
 
-        if (res.data.image) {
-          setPreview(`${baseURL}/uploads/${res.data.image}`);
+        if (res.data.file) {
+          setPreview(`${baseURL}/images/${res.data.file}`);
         }
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load post");
@@ -61,8 +61,8 @@ function EditPost() {
       const data = new FormData();
       data.append("title", formData.title);
       data.append("description", formData.description);
-      if (formData.image) {
-        data.append("image", formData.image);
+      if (formData.file) {
+        data.append("file", formData.file);
       }
 
       await axios.put(`${baseURL}/editpost/${id}`, data, {
@@ -89,7 +89,7 @@ function EditPost() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setFormData((prev) => ({ ...prev, image: file }));
+    setFormData((prev) => ({ ...prev, file }));
     setPreview(URL.createObjectURL(file));
   };
 
@@ -167,7 +167,17 @@ function EditPost() {
                 className="mb-3 h-40 w-full object-cover rounded-md border"
               />
             )}
-            <input type="file" accept="image/*" onChange={handleFileChange} />
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleFileChange} 
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-md file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
           </div>
 
           <div className="flex gap-4">

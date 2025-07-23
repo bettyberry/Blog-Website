@@ -9,7 +9,7 @@ function Post() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
