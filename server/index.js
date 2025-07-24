@@ -24,7 +24,7 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const allowedOrigins = [
-  "http://localhost:5173"
+  "http://localhost:5173","https://blog-website-hd7a.vercel.app"
 ];
 
 app.use(
@@ -70,11 +70,12 @@ const verifyUser = (req, res, next) => {
     req.email = decoded.email;
     req.username = decoded.username;
     req.role = decoded.role;
-    req.userId = decoded._id || decoded.id; 
+    req.userId = decoded._id || decoded.id; // assuming your JWT includes user id; if not, you may need to add it on login
     next();
   });
 };
 
+// Storage config for multer (updated to be more robust)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = 'public/images';
@@ -362,6 +363,7 @@ app.put("/editpost/:id", upload.single("image"), async (req, res) => {
     let imagePath = existingPost.image; // default to old image
 
     if (req.file) {
+      // Delete old image if it exists
       if (existingPost.image && fs.existsSync(existingPost.image)) {
         fs.unlinkSync(existingPost.image);
       }
