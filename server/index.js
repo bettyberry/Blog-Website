@@ -24,10 +24,10 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://blogwebsite-7dl1.vercel.app",
-  "https://blog-website-ojwc.vercel.app"
+  "http://localhost:5173", // For local dev
+  "https://blog-website-ojwc-git-main-bettys-projects-c906bf69.vercel.app", 
 ];
+
 
 app.use(
   cors({
