@@ -12,10 +12,10 @@ function EditPost() {
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState({ fetch: true, submit: false });
   const [error, setError] = useState(null);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useUserContext();
-
   const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   useEffect(() => {
@@ -35,7 +35,7 @@ function EditPost() {
         setFormData({
           title: res.data.title,
           description: res.data.description,
-          image: null, // no file on load
+          image: null,
         });
 
         if (res.data.image) {
@@ -47,8 +47,9 @@ function EditPost() {
         setLoading((prev) => ({ ...prev, fetch: false }));
       }
     }
+
     fetchPost();
-  }, [id, navigate, user, baseURL]);
+  }, [id, user, navigate, baseURL]);
 
   const updatePost = async (e) => {
     e.preventDefault();
@@ -87,18 +88,20 @@ function EditPost() {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     setFormData((prev) => ({ ...prev, image: file }));
     setPreview(URL.createObjectURL(file));
   };
 
-  if (loading.fetch)
+  if (loading.fetch) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
       </div>
     );
+  }
 
-  if (error && !loading.fetch)
+  if (error && !loading.fetch) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
@@ -113,6 +116,7 @@ function EditPost() {
         </div>
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
@@ -120,7 +124,9 @@ function EditPost() {
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">✏️ Edit Post</h2>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 text-center">{error}</div>
+          <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 text-center">
+            {error}
+          </div>
         )}
 
         <form onSubmit={updatePost} className="space-y-6" encType="multipart/form-data">
