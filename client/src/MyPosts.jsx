@@ -9,20 +9,22 @@ function MyPosts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Replace with your deployed backend URL
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
   useEffect(() => {
     if (!user) return;
 
     async function fetchMyPosts() {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:3001/getposts", {
+        const res = await axios.get(`${API_URL}/getposts`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
           withCredentials: true,
         });
 
-        // Filter posts by logged-in user's email (assuming posts have email field)
         const userPosts = res.data.filter((post) => post.email === user.email);
         setPosts(userPosts);
       } catch (err) {
@@ -33,7 +35,27 @@ function MyPosts() {
     }
 
     fetchMyPosts();
-  }, [user]);
+  }, [user, API_URL]);
+
+  const handleDelete = async (postId) => {
+    const confirm = window.confirm("Are you sure you want to delete this post?");
+    if (!confirm) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_URL}/deletepost/${postId}`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        withCredentials: true,
+      });
+
+      // Remove deleted post from UI
+      setPosts((prev) => prev.filter((post) => post._id !== postId));
+    } catch (err) {
+      alert("Failed to delete post");
+    }
+  };
 
   if (loading) return <p>Loading your posts...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
@@ -51,7 +73,9 @@ function MyPosts() {
             <Link to={`/post/${post._id}`}>
               <h2 className="text-xl font-semibold">{post.title}</h2>
             </Link>
-            <p className="mt-2 text-gray-700">{post.description.slice(0, 100)}...</p>
+            <p className="mt-2 text-gray-700">
+              {post.description.slice(0, 100)}...
+            </p>
             <div className="mt-2 flex gap-4">
               <Link
                 to={`/editpost/${post._id}`}
@@ -59,7 +83,12 @@ function MyPosts() {
               >
                 Edit
               </Link>
-              {/* You can add delete functionality here if you want */}
+              <button
+                onClick={() => handleDelete(post._id)}
+                className="text-red-600 hover:underline"
+              >
+                Delete
+              </button>
             </div>
           </li>
         ))}
