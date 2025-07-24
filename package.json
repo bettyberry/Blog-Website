@@ -1,24 +1,28 @@
 {
-  "name": "blog-website",
+  "name": "server",
   "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bettyberry/Blog-Website.git"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/bettyberry/Blog-Website/issues"
-  },
-  "homepage": "https://github.com/bettyberry/Blog-Website#readme",
   "description": "",
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
     "express": "^5.1.0",
-    "mongoose": "^8.16.4"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
+    "multer": "^2.0.1",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
