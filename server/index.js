@@ -24,9 +24,10 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const allowedOrigins = [
-  "",
-  "http://localhost:5173"
+  "http://localhost:5173",
+  "https://blog-website-9-fbc1.onrender.com" 
 ];
+
 
 app.use(
   cors({
@@ -130,7 +131,6 @@ app.put("/editpost/:id", verifyUser, upload.single("file"), async (req, res) => 
     const { title, description } = req.body;
     const email = req.email;
 
-    // Verify post exists and belongs to user
     const existingPost = await PostModel.findById(id);
     if (!existingPost) {
       return res.status(404).json({ error: "Post not found" });
@@ -265,7 +265,6 @@ app.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: "Password is incorrect" });
 
-    // Include user._id in JWT payload for saved posts
     const token = jwt.sign(
       { email: user.email, username: user.username, role: user.role, id: user._id },
       process.env.JWT_SECRET,
@@ -333,7 +332,7 @@ app.get("/getposts", async (req, res) => {
     let query = PostModel.find(filter);
 
     if (sort === "latest") {
-      query = query.sort({ createdAt: -1 }); // Newest first
+      query = query.sort({ createdAt: -1 }); 
     }
 
     const posts = await query.exec();
@@ -540,7 +539,6 @@ app.get("/admin/subscribers", verifyAdmin, async (req, res) => {
   }
 });
 
-// Check if saved
 app.get("/savedposts/check/:postId", verifyUser, async (req, res) => {
   try {
     const userId = req.userId;
