@@ -8,9 +8,14 @@ function MyPosts() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setError("Please log in to view your posts");
+      setLoading(false);
+      return;
+    }
 
     async function fetchMyPosts() {
       try {
@@ -22,9 +27,15 @@ function MyPosts() {
           withCredentials: true,
         });
 
-        const userPosts = res.data.filter((post) => post.email === user.email);
+        // Improved filtering
+        const userPosts = res.data.filter((post) => 
+          post.email && user.email && 
+          post.email.toLowerCase() === user.email.toLowerCase()
+        );
+        
         setPosts(userPosts);
       } catch (err) {
+        console.error("Fetch posts error:", err);
         setError("Failed to fetch your posts");
       } finally {
         setLoading(false);
@@ -47,16 +58,16 @@ function MyPosts() {
         withCredentials: true,
       });
 
-      // Remove deleted post from UI
       setPosts((prev) => prev.filter((post) => post._id !== postId));
     } catch (err) {
+      console.error("Delete post error:", err);
       alert("Failed to delete post");
     }
   };
 
-  if (loading) return <p>Loading your posts...</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
-  if (posts.length === 0) return <p>You haven't created any posts yet.</p>;
+  if (loading) return <div className="flex justify-center p-8"><p>Loading your posts...</p></div>;
+  if (error) return <div className="flex justify-center p-8"><p className="text-red-600">{error}</p></div>;
+  if (posts.length === 0) return <div className="flex justify-center p-8"><p>You haven't created any posts yet.</p></div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -69,10 +80,10 @@ function MyPosts() {
           >
             <Link to={`/post/${post._id}`}>
               <h2 className="text-xl font-semibold">{post.title}</h2>
+              <p className="mt-2 text-gray-700">
+                {post.description.slice(0, 100)}...
+              </p>
             </Link>
-            <p className="mt-2 text-gray-700">
-              {post.description.slice(0, 100)}...
-            </p>
             <div className="mt-2 flex gap-4">
               <Link
                 to={`/editpost/${post._id}`}
