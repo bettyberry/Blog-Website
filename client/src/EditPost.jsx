@@ -7,16 +7,13 @@ function EditPost() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-<<<<<<< HEAD
     file: null,
-=======
-    file: null, // Changed from 'image' to 'file' for consistency
->>>>>>> 24d12727423a5ca3d843a5b025e4135e9bab0733
   });
+
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState({ fetch: true, submit: false });
   const [error, setError] = useState(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState(""); // To store the current Cloudinary URL
+  const [currentImageUrl, setCurrentImageUrl] = useState("");
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,12 +41,8 @@ function EditPost() {
         });
 
         if (res.data.file) {
-<<<<<<< HEAD
-          setPreview(res.data.file); // Directly use Cloudinary URL
-          setCurrentImageUrl(res.data.file); // Store the current image URL
-=======
-          setPreview(`${baseURL}/images/${res.data.file}`);
->>>>>>> 24d12727423a5ca3d843a5b025e4135e9bab0733
+          setPreview(res.data.file);
+          setCurrentImageUrl(res.data.file);
         }
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load post");
@@ -71,11 +64,7 @@ function EditPost() {
       const data = new FormData();
       data.append("title", formData.title);
       data.append("description", formData.description);
-<<<<<<< HEAD
-      
-      // Only append file if a new one was selected
-=======
->>>>>>> 24d12727423a5ca3d843a5b025e4135e9bab0733
+
       if (formData.file) {
         data.append("file", formData.file);
       }
@@ -105,17 +94,13 @@ function EditPost() {
     const file = e.target.files[0];
     if (!file) return;
     setFormData((prev) => ({ ...prev, file }));
-<<<<<<< HEAD
-    setPreview(URL.createObjectURL(file)); // Create preview for new file
+    setPreview(URL.createObjectURL(file));
   };
 
   const handleRemoveImage = () => {
     setFormData((prev) => ({ ...prev, file: null }));
     setPreview("");
-    setCurrentImageUrl(""); // Clear the current image URL
-=======
-    setPreview(URL.createObjectURL(file));
->>>>>>> 24d12727423a5ca3d843a5b025e4135e9bab0733
+    setCurrentImageUrl("");
   };
 
   if (loading.fetch) {
