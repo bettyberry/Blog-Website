@@ -8,10 +8,11 @@ function CreatePost() {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null); // <-- new success state
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -29,15 +30,23 @@ function CreatePost() {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
     if (error) setError(null);
+    if (success) setSuccess(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Please login first");
+        setLoading(false);
+        return;
+      }
+
       const data = new FormData();
       data.append("title", formData.title);
       data.append("description", formData.description);
@@ -46,11 +55,18 @@ function CreatePost() {
       await axios.post(`${API_BASE_URL}/create`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
       });
 
-      navigate("/");
+      setSuccess("🎉 Post created successfully!");
+      setFormData({ title: "", description: "", file: null });
+      setPreview(null);
+
+      // Optional: Navigate after a delay if you want
+      // setTimeout(() => navigate("/"), 1500);
     } catch (err) {
+      console.error("Post creation error:", err);
       setError(err.response?.data?.error || "Failed to create post");
     } finally {
       setLoading(false);
@@ -64,6 +80,10 @@ function CreatePost() {
 
         {error && (
           <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4 text-center">{error}</div>
+        )}
+
+        {success && (
+          <div className="bg-green-100 text-green-700 p-4 rounded-md mb-4 text-center">{success}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -135,7 +155,7 @@ function CreatePost() {
               loading ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "🔄 Creating..." : "🚀 Create Post"}
+            {loading ? "🔄 Creating..." : " Create Post"}
           </button>
         </form>
       </div>

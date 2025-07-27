@@ -12,18 +12,20 @@ function Navbar() {
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
-    setLoading(true);
-    try {
-      await axios.get("http://localhost:3001/logout", { withCredentials: true });
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      localStorage.removeItem("token");
-      setUser(null);
-      setLoading(false);
-      navigate("/");
-    }
-  };
+  setLoading(true);
+  try {
+    await axios.get("http://localhost:3001/logout", { withCredentials: true });
+  } catch (error) {
+    console.error("Logout error:", error);
+  } 
+  // Wait 1.5 seconds so loading spinner shows before redirect
+  setTimeout(() => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setLoading(false);
+    navigate("/");
+  }, 1500);
+};
 
   const isAdmin = user?.role === "admin";
   const desktopAuthBtnClasses = "bg-amber-600 hover:bg-amber-700 text-white";
@@ -80,12 +82,20 @@ function Navbar() {
                   <span className="text-sm text-gray-600 font-semibold">{user.username}</span>
                 </div>
                 <Button
-                  onClick={handleLogout}
-                  disabled={loading}
-                  className={desktopAuthBtnClasses}
-                >
-                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Sign Out"}
-                </Button>
+  onClick={handleLogout}
+  disabled={loading}
+  className={desktopAuthBtnClasses}
+>
+  {loading ? (
+    <>
+      <Loader2 className="animate-spin h-5 w-3" />
+      <span className="ml-2">Signing out...</span>
+    </>
+  ) : (
+    "Sign Out"
+  )}
+</Button>
+
               </>
             ) : (
               <>
@@ -210,7 +220,10 @@ function Navbar() {
                       disabled={loading}
                     >
                       {loading ? (
-                        <Loader2 className="animate-spin h-5 w-5 mx-auto" />
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="animate-spin h-5 w-5" />
+                          <span>Signing out...</span>
+                        </div>
                       ) : (
                         "Sign Out"
                       )}
