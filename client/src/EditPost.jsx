@@ -13,9 +13,6 @@ function EditPost() {
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState({ fetch: true, submit: false, delete: false });
   const [error, setError] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
-  const [deleteSuccess, setDeleteSuccess] = useState(null);
-  const [updateSuccess, setUpdateSuccess] = useState(null);  // Success notification state
   const [currentImageUrl, setCurrentImageUrl] = useState("");
 
   const { id } = useParams();
@@ -170,19 +167,7 @@ function EditPost() {
 
         {(error || deleteError) && (
           <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 text-center">
-            {error || deleteError}
-          </div>
-        )}
-
-        {deleteSuccess && (
-          <div className="bg-green-50 text-green-700 p-4 rounded-md mb-6 text-center">
-            {deleteSuccess}
-          </div>
-        )}
-
-        {updateSuccess && (
-          <div className="bg-green-50 text-green-700 p-4 rounded-md mb-6 text-center">
-            {updateSuccess}
+            {error}
           </div>
         )}
 
@@ -274,6 +259,15 @@ function EditPost() {
               className="flex-1 py-2 px-4 rounded-md text-white bg-amber-600 hover:bg-amber-700"
             >
               {loading.submit ? "Updating..." : "Update Post"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading.submit || loading.delete}
+              className="flex-1 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700"
+            >
+              {loading.delete ? "Deleting..." : "Delete Post"}
             </button>
           </div>
         </form>
