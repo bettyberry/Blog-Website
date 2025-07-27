@@ -24,9 +24,8 @@ app.use(express.json());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://blog-website-8-hcn7.onrender.com"
+  "https://blog-website-11-dm8h.onrender.com"
 ];
-
 
 app.use(
   cors({
