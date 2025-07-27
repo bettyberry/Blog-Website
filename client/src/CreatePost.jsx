@@ -11,7 +11,7 @@ function CreatePost() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -43,7 +43,7 @@ function CreatePost() {
       data.append("description", formData.description);
       if (formData.file) data.append("file", formData.file);
 
-      await axios.post(`${baseURL}/create`, data, {
+      await axios.post(`${API_BASE_URL}/create`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

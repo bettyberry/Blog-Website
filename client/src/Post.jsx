@@ -9,15 +9,16 @@ function Post() {
   const navigate = useNavigate();
   const { user } = useUserContext();
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [imageLoading, setImageLoading] = useState(true); // New state for image loading
   const [error, setError] = useState(null);
   const [likes, setLikes] = useState(0);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
-  const [saved, setSaved] = useState(false); // NEW state for saved
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     async function fetchPostAndComments() {
@@ -30,16 +31,15 @@ function Post() {
         setLikes(postRes.data.likes || 0);
         setComments(commentsRes.data);
 
-        // Check if saved by user (assuming API endpoint)
         if (user) {
           try {
             const token = localStorage.getItem("token");
             const savedRes = await axios.get(`${API_URL}/savedposts/check/${id}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
-            setSaved(savedRes.data.saved); // expects { saved: true/false }
+            setSaved(savedRes.data.saved);
           } catch {
-            // ignore errors silently
+            // silently ignore
           }
         }
       } catch {
@@ -51,6 +51,7 @@ function Post() {
 
     fetchPostAndComments();
   }, [id, API_URL, user]);
+
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
@@ -70,18 +71,13 @@ function Post() {
 
   const handleLike = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please login first");
-      return;
-    }
+    if (!token) return alert("Please login first");
 
     try {
       const res = await axios.post(
         `${API_URL}/like/${post._id}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setLikes(res.data.likes);
     } catch (err) {
@@ -89,17 +85,12 @@ function Post() {
     }
   };
 
-  // NEW: Save/Unsave post toggle handler
   const handleSaveToggle = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please login first");
-      return;
-    }
+    if (!token) return alert("Please login first");
 
     try {
       if (!saved) {
-        // Save the post
         await axios.post(
           `${API_URL}/savedposts/${post._id}`,
           {},
@@ -108,7 +99,6 @@ function Post() {
         setSaved(true);
         alert("Post saved!");
       } else {
-        // Unsave the post
         await axios.delete(`${API_URL}/savedposts/${post._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -142,13 +132,14 @@ function Post() {
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-slate-700"></div>
         <span className="ml-4 text-slate-700">Loading post...</span>
       </div>
     );
+  }
 
   if (error) return <div className="text-red-600 text-center">{error}</div>;
   if (!post) return <div className="text-center">No post found</div>;
@@ -162,7 +153,7 @@ function Post() {
 
       {post.file && (
         <img
-          src={`${API_URL}/images/${post.file}`}
+          src={post.file}
           alt={post.title}
           className="mb-6 max-w-full rounded"
           onError={(e) => {
@@ -174,26 +165,24 @@ function Post() {
       <div className="flex items-center mb-4 gap-6">
         <button
           onClick={handleLike}
-          className="flex items-center gap-2 text-indigo-600 font-semibold "
+          className="flex items-center gap-2 text-indigo-600 font-semibold"
         >
-          🧡Like
+          🧡 Like
         </button>
         <span className="ml-2 text-slate-700">
           {likes} {likes === 1 ? "like" : "likes"}
         </span>
 
-        {/* Save/Unsave button */}
         <button
-  onClick={handleSaveToggle}
-  className="flex items-center gap-2 px-3 py-1 text-sm rounded hover:bg-gray-100 transition"
->
-  {saved ? (
-    <BookmarkCheck className="text-yellow-500 w-6 h-6" />
-  ) : (
-    <Bookmark className="text-black w-6 h-6" />
-  )}
-</button>
-
+          onClick={handleSaveToggle}
+          className="flex items-center gap-2 px-3 py-1 text-sm rounded hover:bg-gray-100 transition"
+        >
+          {saved ? (
+            <BookmarkCheck className="text-yellow-500 w-6 h-6" />
+          ) : (
+            <Bookmark className="text-black w-6 h-6" />
+          )}
+        </button>
       </div>
 
       {isAuthor && (

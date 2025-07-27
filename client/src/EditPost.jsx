@@ -7,11 +7,12 @@ function EditPost() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    file: null, // Changed from 'image' to 'file' for consistency
+    file: null,
   });
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState({ fetch: true, submit: false });
   const [error, setError] = useState(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState(""); // To store the current Cloudinary URL
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -39,7 +40,8 @@ function EditPost() {
         });
 
         if (res.data.file) {
-          setPreview(`${baseURL}/images/${res.data.file}`);
+          setPreview(res.data.file); // Directly use Cloudinary URL
+          setCurrentImageUrl(res.data.file); // Store the current image URL
         }
       } catch (err) {
         setError(err.response?.data?.error || "Failed to load post");
@@ -61,6 +63,8 @@ function EditPost() {
       const data = new FormData();
       data.append("title", formData.title);
       data.append("description", formData.description);
+      
+      // Only append file if a new one was selected
       if (formData.file) {
         data.append("file", formData.file);
       }
@@ -90,7 +94,13 @@ function EditPost() {
     const file = e.target.files[0];
     if (!file) return;
     setFormData((prev) => ({ ...prev, file }));
-    setPreview(URL.createObjectURL(file));
+    setPreview(URL.createObjectURL(file)); // Create preview for new file
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, file: null }));
+    setPreview("");
+    setCurrentImageUrl(""); // Clear the current image URL
   };
 
   if (loading.fetch) {
@@ -160,12 +170,24 @@ function EditPost() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Post Image</label>
-            {preview && (
-              <img
-                src={preview}
-                alt="Post Preview"
-                className="mb-3 h-40 w-full object-cover rounded-md border"
-              />
+            {(preview || currentImageUrl) && (
+              <div className="relative mb-3">
+                <img
+                  src={preview || currentImageUrl}
+                  alt="Post Preview"
+                  className="h-40 w-full object-cover rounded-md border"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  title="Remove image"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
             )}
             <input 
               type="file" 

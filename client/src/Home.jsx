@@ -14,11 +14,10 @@ function Home() {
   const [email, setEmail] = useState("");
   const [subscribeStatus, setSubscribeStatus] = useState(null); // "success" or "error"
   const [subscribeMessage, setSubscribeMessage] = useState("");
-  const [subscribed, setSubscribed] = useState(false); // track if subscribed
+  const [subscribed, setSubscribed] = useState(false); 
 
   const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-  // Debounce searchTerm: update debouncedSearchTerm 500ms after user stops typing
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm.trim());
@@ -109,7 +108,7 @@ function Home() {
           <form
   onSubmit={(e) => {
     e.preventDefault();
-    handleSearch(); // Call your search logic here
+    handleSearch(); 
   }}
   className="relative w-full max-w-md"
 >
@@ -266,15 +265,15 @@ function Home() {
                 <Link to={`/post/${post._id}`} className="block">
                   <div className={`${index === 0 ? "h-96" : "h-72"} relative`}>
                     {post.file && (
-                      <img
-                        src={`${baseURL}/images/${post.file}`}
-                        alt={post.title}
-                        className="w-full h-full object-cover rounded-t-xl"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    )}
+  <img
+    src={post.file}
+    alt={post.title}
+    className="w-full h-full object-cover rounded-t-xl"
+    onError={(e) => {
+      e.target.style.display = "none";
+    }}
+  />
+)}
                     <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs font-medium">
                       {post.email ? post.email.split("@")[0] : "Anonymous"}
                     </div>

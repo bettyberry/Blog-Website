@@ -7,8 +7,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+
 
 const UserModel = require("./models/UserModel");
 const PostModel = require("./models/PostModel");
@@ -71,36 +70,50 @@ const verifyUser = (req, res, next) => {
     req.email = decoded.email;
     req.username = decoded.username;
     req.role = decoded.role;
-    req.userId = decoded._id || decoded.id; // assuming your JWT includes user id; if not, you may need to add it on login
+    req.userId = decoded._id || decoded.id; 
     next();
   });
 };
 
-// Storage config for multer (updated to be more robust)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'public/images';
-    // Ensure directory exists
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET 
 });
 
+
 const upload = multer({ 
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 5 * 1024 * 1024 } 
 });
+
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: 'auto' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(fileBuffer);
+  });
+};
 
 // Updated Create Post Route
 app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
   try {
     const { title, description } = req.body;
     const email = req.email;
-    const file = req.file?.filename || null;
+    
+    let fileUrl = null;
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      fileUrl = result.secure_url;
+    }
 
     if (!title || !description) {
       return res.status(400).json({ error: "Title and description are required" });
@@ -110,61 +123,17 @@ app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
       title, 
       description, 
       email, 
-      file 
+      file: fileUrl 
     });
     
     res.status(201).json(newPost);
   } catch (err) {
     console.error("Create post error:", err);
-    if (req.file) {
-      fs.unlink(path.join(__dirname, 'public', 'images', req.file.filename), () => {});
-    }
     res.status(500).json({ error: "Failed to create post" });
   }
 });
 
-// Updated Edit Post Route
-app.put("/editpost/:id", verifyUser, upload.single("file"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description } = req.body;
-    const email = req.email;
 
-    // Verify post exists and belongs to user
-    const existingPost = await PostModel.findById(id);
-    if (!existingPost) {
-      return res.status(404).json({ error: "Post not found" });
-    }
-    if (existingPost.email !== email) {
-      return res.status(403).json({ error: "Not authorized to edit this post" });
-    }
-
-    const updateData = { title, description };
-    
-    if (req.file) {
-      if (existingPost.file) {
-        const oldFilePath = path.join(__dirname, 'public', 'images', existingPost.file);
-        fs.unlink(oldFilePath, (err) => {
-          if (err) console.error("Failed to delete old image:", err);
-        });
-      }
-      updateData.file = req.file.filename;
-    }
-
-    const updatedPost = await PostModel.findByIdAndUpdate(id, updateData, { 
-      new: true 
-    });
-
-    res.json(updatedPost);
-  } catch (err) {
-    console.error("Edit post error:", err);
-    // Delete newly uploaded file if error occurred
-    if (req.file) {
-      fs.unlink(path.join(__dirname, 'public', 'images', req.file.filename), () => {});
-    }
-    res.status(500).json({ error: "Failed to update post" });
-  }
-});
 
 
 const verifyAdmin = (req, res, next) => {
@@ -223,13 +192,6 @@ app.delete("/admin/posts/:id", verifyAdmin, async (req, res) => {
     const post = await PostModel.findByIdAndDelete(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    if (post.file) {
-      const imagePath = path.join(__dirname, "public", "images", post.file);
-      fs.unlink(imagePath, (err) => {
-        if (err) console.log("Failed to delete image:", err.message);
-      });
-    }
-
     res.json("Post deleted successfully");
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -265,7 +227,6 @@ app.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: "Password is incorrect" });
 
-    // Include user._id in JWT payload for saved posts
     const token = jwt.sign(
       { email: user.email, username: user.username, role: user.role, id: user._id },
       process.env.JWT_SECRET,
@@ -303,21 +264,7 @@ app.get("/logout", (req, res) => {
   res.clearCookie("token").json({ message: "Logged out" });
 });
 
-// Posts routes
-app.post("/create", verifyUser, upload.single("file"), async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    const email = req.email;
-    const file = req.file?.filename || null;
 
-    await PostModel.create({ title, description, email, file });
-    res.json("Success");
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get all posts with optional search and sorting
 app.get("/getposts", async (req, res) => {
   try {
     const { search, sort } = req.query;
@@ -333,7 +280,7 @@ app.get("/getposts", async (req, res) => {
     let query = PostModel.find(filter);
 
     if (sort === "latest") {
-      query = query.sort({ createdAt: -1 }); // Newest first
+      query = query.sort({ createdAt: -1 });
     }
 
     const posts = await query.exec();
@@ -353,38 +300,37 @@ app.get("/getpostbyid/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.put("/editpost/:id", upload.single("image"), async (req, res) => {
+app.put("/editpost/:id", verifyUser, upload.single("file"), async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description } = req.body;
+    const email = req.email;
 
     const existingPost = await PostModel.findById(id);
-    if (!existingPost) return res.status(404).json({ error: "Post not found" });
-
-    let imagePath = existingPost.image; // default to old image
-
-    if (req.file) {
-      // Delete old image if it exists
-      if (existingPost.image && fs.existsSync(existingPost.image)) {
-        fs.unlinkSync(existingPost.image);
-      }
-
-      imagePath = req.file.path;
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    if (existingPost.email !== email) {
+      return res.status(403).json({ error: "Not authorized to edit this post" });
     }
 
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      id,
-      { title, description, image: imagePath },
-      { new: true }
-    );
+    const updateData = { title, description };
+    
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      updateData.file = result.secure_url;
+    }
 
-    res.status(200).json(updatedPost);
+    const updatedPost = await PostModel.findByIdAndUpdate(id, updateData, { 
+      new: true 
+    });
+
+    res.json(updatedPost);
   } catch (err) {
-    console.error("Error updating post:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Edit post error:", err);
+    res.status(500).json({ error: "Failed to update post" });
   }
 });
-
 
 app.delete("/deletepost/:id", verifyUser, async (req, res) => {
   try {
@@ -395,20 +341,12 @@ app.delete("/deletepost/:id", verifyUser, async (req, res) => {
 
     if (!post) return res.status(403).json({ error: "Not authorized or post not found" });
 
-    if (post.file) {
-      const imagePath = path.join(__dirname, "public", "images", post.file);
-      fs.unlink(imagePath, (err) => {
-        if (err) console.log("Failed to delete image:", err.message);
-      });
-    }
-
     res.json("Success");
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Comments routes
 app.get("/comments/:postId", async (req, res) => {
   try {
     const comments = await CommentModel.find({ postId: req.params.postId }).sort({ createdAt: -1 });
@@ -429,7 +367,6 @@ app.post("/comments", verifyUser, async (req, res) => {
   }
 });
 
-// Like post (authenticated)
 app.post("/like/:postId", verifyUser, async (req, res) => {
   try {
     const post = await PostModel.findById(req.params.postId);
@@ -478,7 +415,6 @@ app.post("/subscribe", async (req, res) => {
       return res.status(400).json({ error: "Valid email is required." });
     }
 
-    // Simple email regex validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: "Invalid email format." });
