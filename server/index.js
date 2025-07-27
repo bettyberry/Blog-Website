@@ -23,7 +23,8 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const allowedOrigins = [
-  "http://localhost:5173"
+  "http://localhost:5173",
+  "https://blog-website-9-fbc1.onrender.com"
 ];
 
 app.use(
