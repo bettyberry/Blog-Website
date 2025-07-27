@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Loader2 } from "lucide-react"; 
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-800">✨ Join Our Community</h2>
+          <h2 className="text-3xl font-bold text-slate-800"> Join Our Community</h2>
         </div>
 
         {error && (
@@ -112,11 +113,18 @@ function Register() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 px-4 rounded-xl text-white bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 shadow-md font-semibold text-lg tracking-wide transition-all duration-300 ${
+            className={`w-full py-3 px-4 rounded-xl text-white bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 shadow-md font-semibold text-lg tracking-wide transition-all duration-300 flex items-center justify-center gap-2 ${
               loading ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "🔄 Creating Account..." : "🚀 Create Account"}
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin h-5 w-5" />
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
           </button>
         </form>
 

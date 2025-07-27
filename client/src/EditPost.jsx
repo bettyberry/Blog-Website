@@ -11,8 +11,10 @@ function EditPost() {
   });
 
   const [preview, setPreview] = useState("");
-  const [loading, setLoading] = useState({ fetch: true, submit: false });
+  const [loading, setLoading] = useState({ fetch: true, submit: false, delete: false });
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(null);
   const [currentImageUrl, setCurrentImageUrl] = useState("");
 
   const { id } = useParams();
@@ -84,6 +86,32 @@ function EditPost() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+
+    setLoading((prev) => ({ ...prev, delete: true }));
+    setDeleteError(null);
+    setDeleteSuccess(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${baseURL}/deletepost/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setDeleteSuccess("🗑️ Post deleted successfully!");
+
+      // Redirect after showing success message briefly
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || "Failed to delete post");
+    } finally {
+      setLoading((prev) => ({ ...prev, delete: false }));
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -133,9 +161,15 @@ function EditPost() {
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">✏️ Edit Post</h2>
 
-        {error && (
+        {(error || deleteError) && (
           <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 text-center">
-            {error}
+            {error || deleteError}
+          </div>
+        )}
+
+        {deleteSuccess && (
+          <div className="bg-green-50 text-green-700 p-4 rounded-md mb-6 text-center">
+            {deleteSuccess}
           </div>
         )}
 
@@ -183,16 +217,25 @@ function EditPost() {
                   className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                   title="Remove image"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
               </div>
             )}
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={handleFileChange} 
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-md file:border-0
@@ -207,16 +250,26 @@ function EditPost() {
               type="button"
               onClick={() => navigate(-1)}
               className="flex-1 py-2 px-4 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50"
-              disabled={loading.submit}
+              disabled={loading.submit || loading.delete}
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              disabled={loading.submit}
+              disabled={loading.submit || loading.delete}
               className="flex-1 py-2 px-4 rounded-md text-white bg-amber-600 hover:bg-amber-700"
             >
               {loading.submit ? "Updating..." : "Update Post"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading.submit || loading.delete}
+              className="flex-1 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700"
+            >
+              {loading.delete ? "Deleting..." : "Delete Post"}
             </button>
           </div>
         </form>

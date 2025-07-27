@@ -48,7 +48,7 @@ const res = await axios.post(`${baseURL}/login`, formData, { withCredentials: tr
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-8">
       <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl">
         <h2 className="text-3xl font-bold mb-6 text-center text-slate-800">
-          🔐 Welcome Back
+           Welcome Back
         </h2>
         {error && (
           <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4 text-center">
